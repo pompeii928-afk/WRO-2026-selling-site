@@ -1,0 +1,6 @@
+{
+  "name": "ROBO STORE - WRO & CoSpace Robotics Store",
+  "description": "WRO 로봇 조립도·소스코드 및 CoSpace Rescue 소스코드 전문 판매 플랫폼",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
