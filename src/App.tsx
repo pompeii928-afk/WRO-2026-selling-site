@@ -13,7 +13,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Youtube } from 'lucide-react';
 import { LanguageCode, Product, StoreSettings, ProductCategory } from './types';
 import { translations } from './locales/translations';
-import { loadProducts, loadSettings } from './utils/storage';
+import { loadProducts, loadSettings, subscribeToCloudData, fetchCloudProducts, fetchCloudSettings } from './utils/storage';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
@@ -71,10 +71,33 @@ export default function App() {
   // 언어 번역 사전
   const t = translations[currentLang];
 
-  // 초기 데이터 로드 및 브라우저 URL 동기화
+  // 초기 데이터 로드, 클라우드 실시간 동기화 및 브라우저 URL 동기화
   useEffect(() => {
+    // 1. 빠른 초기 화면 표시를 위해 로컬 캐시 우선 반영
     setProducts(loadProducts());
     setSettings(loadSettings());
+
+    // 2. Firestore 클라우드에서 최신 데이터 가져오기
+    fetchCloudProducts().then((cloudProds) => {
+      if (cloudProds && cloudProds.length > 0) {
+        setProducts(cloudProds);
+      }
+    });
+    fetchCloudSettings().then((cloudSettings) => {
+      if (cloudSettings) {
+        setSettings(cloudSettings);
+      }
+    });
+
+    // 3. Firestore 실시간 리스너 구독 (관리자가 수정 시 모든 방문자 화면에 즉각 실시간 반영)
+    const unsubscribe = subscribeToCloudData(
+      (updatedProducts) => {
+        setProducts(updatedProducts);
+      },
+      (updatedSettings) => {
+        setSettings(updatedSettings);
+      }
+    );
 
     // 브라우저 뒤로가기/앞으로가기 popstate 이벤트 감지
     const handlePopState = () => {
@@ -88,7 +111,10 @@ export default function App() {
     };
 
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      unsubscribe();
+    };
   }, []);
 
   // 언어 변경 핸들러

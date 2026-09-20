@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "products": {
+      "$productId": {
+        "read": true,
+        "write": true
+      }
+    },
+    "settings": {
+      "global": {
+        "read": true,
+        "write": true
+      }
+    }
+  }
+}

@@ -43,12 +43,19 @@ import {
   hasAdminPassword, 
   setAdminPassword, 
   verifyAdminPassword, 
+  checkCloudAdminPasswordConfigured,
   isAdminAuthenticated, 
   setAdminAuthenticated, 
   loadProducts, 
   saveProducts, 
   loadSettings, 
   saveSettings,
+  saveProductToCloud,
+  deleteProductFromCloud,
+  syncAllProductsToCloud,
+  saveSettingsToCloud,
+  fetchCloudProducts,
+  fetchCloudSettings,
   exportBackupJson,
   importBackupJson,
   DEFAULT_PRODUCTS,
@@ -117,15 +124,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
 
   // 초기 상태 로드
   useEffect(() => {
-    const configured = hasAdminPassword();
-    setIsPasswordConfigured(configured);
+    checkCloudAdminPasswordConfigured().then((configured) => {
+      setIsPasswordConfigured(configured);
+    });
     const authed = isAdminAuthenticated();
     setIsAuthenticated(authed);
 
-    if (authed) {
-      setProducts(loadProducts());
-      setSettings(loadSettings());
-    }
+    // 기본 로컬 캐시 즉시 렌더링
+    setProducts(loadProducts());
+    setSettings(loadSettings());
+
+    // 클라우드에서 최신 데이터 가져와서 동기화
+    fetchCloudProducts().then((cloudList) => {
+      if (cloudList && cloudList.length > 0) {
+        setProducts(cloudList);
+      }
+    });
+    fetchCloudSettings().then((cloudSet) => {
+      if (cloudSet) {
+        setSettings(cloudSet);
+      }
+    });
   }, []);
 
   // 피드백 알림 타이머
@@ -328,30 +347,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
     });
 
     let updatedList: Product[];
+    let targetProd: Product;
     if (editingProductId) {
       // 기존 수정
-      updatedList = products.map((p) => {
-        if (p.id === editingProductId) {
-          return {
-            ...p,
-            category: formCategory,
-            name: formName,
-            price: formPrice,
-            currency: formCurrency,
-            shortDescription: formShortDesc,
-            description: formDesc,
-            includedItems,
-            images: formImages.length > 0 ? formImages : p.images,
-            youtubeUrl: formYoutubeUrl,
-            translations: translationsData,
-          };
-        }
-        return p;
-      });
+      targetProd = {
+        ...products.find((p) => p.id === editingProductId)!,
+        category: formCategory,
+        name: formName,
+        price: formPrice,
+        currency: formCurrency,
+        shortDescription: formShortDesc,
+        description: formDesc,
+        includedItems,
+        images: formImages.length > 0 ? formImages : (products.find((p) => p.id === editingProductId)?.images || []),
+        youtubeUrl: formYoutubeUrl,
+        translations: translationsData,
+      };
+      updatedList = products.map((p) => (p.id === editingProductId ? targetProd : p));
       showFeedback('제품이 성공적으로 수정되었습니다.');
     } else {
       // 신규 추가
-      const newProd: Product = {
+      targetProd = {
         id: `prod-${Date.now()}`,
         category: formCategory,
         name: formName,
@@ -367,12 +383,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
         translations: translationsData,
         createdAt: new Date().toISOString().slice(0, 10),
       };
-      updatedList = [newProd, ...products];
+      updatedList = [targetProd, ...products];
       showFeedback('새 제품이 성공적으로 등록되었습니다.');
     }
 
     setProducts(updatedList);
     saveProducts(updatedList);
+    // Firestore 클라우드 영구 저장 (모든 사용자에게 즉시 공유)
+    saveProductToCloud(targetProd).catch((err) => {
+      console.error('클라우드 제품 동기화 오류:', err);
+    });
+
     setIsEditingProduct(false);
     onDataChange?.();
   };
@@ -384,6 +405,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
       const filtered = products.filter((p) => p.id !== productId);
       setProducts(filtered);
       saveProducts(filtered);
+      // Firestore 클라우드에서 영구 삭제
+      deleteProductFromCloud(productId).catch((err) => {
+        console.error('클라우드 제품 삭제 오류:', err);
+      });
       showFeedback('제품이 삭제되었습니다.');
       onDataChange?.();
     }
@@ -393,6 +418,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     saveSettings(settings);
+    // Firestore 클라우드에 영구 저장
+    saveSettingsToCloud(settings).catch((err) => {
+      console.error('클라우드 설정 저장 오류:', err);
+    });
     showFeedback('사이트 설정이 성공적으로 저장되었습니다.');
     onDataChange?.();
   };
@@ -423,6 +452,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
 
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    saveSettingsToCloud(updatedSettings).catch(console.error);
     setNewCategoryInput('');
     showFeedback(`"${trimmed}" 카테고리가 새로 추가되었습니다.`);
     onDataChange?.();
@@ -478,9 +508,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
 
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    saveSettingsToCloud(updatedSettings).catch(console.error);
+
     if (updatedProdCount > 0) {
       setProducts(updatedProducts);
       saveProducts(updatedProducts);
+      syncAllProductsToCloud(updatedProducts).catch(console.error);
     }
     setEditingCategoryIndex(null);
     showFeedback(`카테고리명이 "${trimmed}"(으)로 변경되었습니다. (제품 ${updatedProdCount}개 자동 동기화)`);
@@ -529,9 +562,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
 
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    saveSettingsToCloud(updatedSettings).catch(console.error);
+
     if (movedCount > 0) {
       setProducts(updatedProducts);
       saveProducts(updatedProducts);
+      syncAllProductsToCloud(updatedProducts).catch(console.error);
     }
 
     showFeedback(`"${catToDelete}" 카테고리가 삭제되었습니다.${movedCount > 0 ? ` (제품 ${movedCount}개 "${fallbackCat}" 카테고리로 이동)` : ''}`);
@@ -555,6 +591,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
 
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    saveSettingsToCloud(updatedSettings).catch(console.error);
     showFeedback('카테고리 순서가 변경되었습니다.');
     onDataChange?.();
   };
@@ -567,6 +604,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
     };
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    saveSettingsToCloud(updatedSettings).catch(console.error);
     showFeedback(
       cat === 'ALL'
         ? '유튜브 채널/영상이 모든 카테고리에서 항상 표시되도록 설정되었습니다.'
@@ -581,8 +619,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
     if (!file) return;
     try {
       const compressed = await compressImage(file, { maxWidth: 600, maxHeight: 150, quality: 0.9 });
-      setSettings((prev) => ({ ...prev, customLogoUrl: compressed }));
-      saveSettings({ ...settings, customLogoUrl: compressed });
+      const updatedSettings = { ...settings, customLogoUrl: compressed };
+      setSettings(updatedSettings);
+      saveSettings(updatedSettings);
+      saveSettingsToCloud(updatedSettings).catch(console.error);
       showFeedback('커스텀 로고가 적용되었습니다.');
       onDataChange?.();
     } catch {
@@ -596,6 +636,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
       const copy = { ...prev };
       delete copy.customLogoUrl;
       saveSettings(copy);
+      saveSettingsToCloud(copy).catch(console.error);
       return copy;
     });
     showFeedback('기본 로고로 복원되었습니다.');
@@ -631,6 +672,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
       saveSettings(DEFAULT_SETTINGS);
       setProducts(DEFAULT_PRODUCTS);
       setSettings(DEFAULT_SETTINGS);
+      syncAllProductsToCloud(DEFAULT_PRODUCTS).catch(console.error);
+      saveSettingsToCloud(DEFAULT_SETTINGS).catch(console.error);
       showFeedback('기본 샘플 데이터로 복원되었습니다.');
       onDataChange?.();
     }

@@ -1,8 +1,19 @@
 /**
  * @file storage.ts
- * @description 로컬 저장소(localStorage) 기반 영구 저장 및 초기 샘플 데이터 관리 유틸리티
+ * @description Firestore 클라우드 실시간 동기화 + 로컬스토리지 백업 레이어
  */
 
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  writeBatch,
+  onSnapshot
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { Product, StoreSettings } from '../types';
 
 const STORAGE_KEYS = {
@@ -173,12 +184,14 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   showHeroSection: false, // 사용자 요청으로 히어로 섹션 기본 숨김
 };
 
-// 제품 목록 불러오기
+// ==========================================
+// [동기식 캐시 함수 - 빠른 초기 렌더링용]
+// ==========================================
+
 export function loadProducts(): Product[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     if (!raw) {
-      // 초기 샘플 저장
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS));
       return DEFAULT_PRODUCTS;
     }
@@ -188,21 +201,19 @@ export function loadProducts(): Product[] {
     }
     return DEFAULT_PRODUCTS;
   } catch (err) {
-    console.error('제품 로딩 실패:', err);
+    console.error('제품 로컬 로딩 실패:', err);
     return DEFAULT_PRODUCTS;
   }
 }
 
-// 제품 목록 저장하기
 export function saveProducts(products: Product[]): void {
   try {
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
   } catch (err) {
-    console.error('제품 저장 실패:', err);
+    console.error('제품 로컬 저장 실패:', err);
   }
 }
 
-// 사이트 설정 불러오기
 export function loadSettings(): StoreSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -226,21 +237,230 @@ export function loadSettings(): StoreSettings {
       customLogoUrl: parsed.customLogoUrl || DEFAULT_SETTINGS.customLogoUrl,
     };
   } catch (err) {
-    console.error('설정 로딩 실패:', err);
+    console.error('설정 로컬 로딩 실패:', err);
     return DEFAULT_SETTINGS;
   }
 }
 
-// 사이트 설정 저장하기
 export function saveSettings(settings: StoreSettings): void {
   try {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   } catch (err) {
-    console.error('설정 저장 실패:', err);
+    console.error('설정 로컬 저장 실패:', err);
   }
 }
 
-// SHA-256 해시 함수
+// ==========================================
+// [Firestore 클라우드 연동 함수 (모든 사용자 실시간 공유)]
+// ==========================================
+
+/**
+ * 클라우드에서 제품 목록을 가져오며, Firestore가 비어있으면 로컬/기본 제품으로 자동 시드
+ */
+export async function fetchCloudProducts(): Promise<Product[]> {
+  try {
+    const colRef = collection(db, 'products');
+    const snapshot = await getDocs(colRef);
+    if (snapshot.empty) {
+      // 로컬에 저장된 제품이 있으면 그것으로, 없으면 DEFAULT_PRODUCTS로 클라우드에 초기 시드
+      const initial = loadProducts();
+      await syncAllProductsToCloud(initial);
+      return initial;
+    }
+
+    const fetched: Product[] = [];
+    snapshot.forEach((docSnap) => {
+      fetched.push(docSnap.data() as Product);
+    });
+
+    // 정렬 (최신순 또는 ID순)
+    fetched.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+    // 로컬 캐시 업데이트
+    saveProducts(fetched);
+    return fetched;
+  } catch (err) {
+    console.warn('Firestore 제품 로드 실패, 로컬 캐시 사용:', err);
+    return loadProducts();
+  }
+}
+
+/**
+ * 단일 제품 저장/수정 (Firestore 클라우드 + 로컬 캐시)
+ */
+export async function saveProductToCloud(product: Product): Promise<void> {
+  try {
+    const docRef = doc(db, 'products', product.id);
+    await setDoc(docRef, product);
+
+    // 로컬 캐시에도 반영
+    const current = loadProducts();
+    const idx = current.findIndex((p) => p.id === product.id);
+    let updated: Product[];
+    if (idx >= 0) {
+      updated = [...current];
+      updated[idx] = product;
+    } else {
+      updated = [product, ...current];
+    }
+    saveProducts(updated);
+  } catch (err) {
+    console.error('Firestore 제품 저장 실패:', err);
+    throw err;
+  }
+}
+
+/**
+ * 단일 제품 삭제 (Firestore 클라우드 + 로컬 캐시)
+ */
+export async function deleteProductFromCloud(productId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'products', productId);
+    await deleteDoc(docRef);
+
+    const current = loadProducts();
+    const updated = current.filter((p) => p.id !== productId);
+    saveProducts(updated);
+  } catch (err) {
+    console.error('Firestore 제품 삭제 실패:', err);
+    throw err;
+  }
+}
+
+/**
+ * 전체 제품 일괄 동기화 (배치 쓰기)
+ */
+export async function syncAllProductsToCloud(products: Product[]): Promise<void> {
+  try {
+    saveProducts(products);
+
+    // 기존 제품 컬렉션 스냅샷 가져오기
+    const colRef = collection(db, 'products');
+    const existingSnap = await getDocs(colRef);
+    const existingIds = new Set(existingSnap.docs.map((d) => d.id));
+    const newIds = new Set(products.map((p) => p.id));
+
+    const batch = writeBatch(db);
+
+    // 삭제 대상
+    existingIds.forEach((id) => {
+      if (!newIds.has(id)) {
+        batch.delete(doc(db, 'products', id));
+      }
+    });
+
+    // 추가 및 수정 대상
+    products.forEach((prod) => {
+      batch.set(doc(db, 'products', prod.id), prod);
+    });
+
+    await batch.commit();
+  } catch (err) {
+    console.error('Firestore 전체 제품 동기화 실패:', err);
+    throw err;
+  }
+}
+
+/**
+ * 클라우드에서 사이트 전역 설정 로드
+ */
+export async function fetchCloudSettings(): Promise<StoreSettings> {
+  try {
+    const docRef = doc(db, 'settings', 'global');
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      const initial = loadSettings();
+      await saveSettingsToCloud(initial);
+      return initial;
+    }
+    const data = docSnap.data() as StoreSettings;
+    const merged: StoreSettings = {
+      ...DEFAULT_SETTINGS,
+      ...data,
+      categories: Array.isArray(data.categories) && data.categories.length > 0
+        ? data.categories
+        : DEFAULT_SETTINGS.categories,
+      youtubeDisplayCategory: data.youtubeDisplayCategory !== undefined
+        ? data.youtubeDisplayCategory
+        : DEFAULT_SETTINGS.youtubeDisplayCategory,
+      showHeroSection: data.showHeroSection !== undefined
+        ? data.showHeroSection
+        : false,
+    };
+    saveSettings(merged);
+    return merged;
+  } catch (err) {
+    console.warn('Firestore 설정 로드 실패, 로컬 캐시 사용:', err);
+    return loadSettings();
+  }
+}
+
+/**
+ * 사이트 전역 설정 저장 (Firestore 클라우드 + 로컬 캐시)
+ */
+export async function saveSettingsToCloud(settings: StoreSettings): Promise<void> {
+  try {
+    saveSettings(settings);
+    const docRef = doc(db, 'settings', 'global');
+    await setDoc(docRef, settings);
+  } catch (err) {
+    console.error('Firestore 설정 저장 실패:', err);
+    throw err;
+  }
+}
+
+/**
+ * Firestore 실시간 리스너 구독 (방문자 & 관리자 화면 모두 실시간 자동 동기화)
+ */
+export function subscribeToCloudData(
+  onProductsUpdate: (products: Product[]) => void,
+  onSettingsUpdate: (settings: StoreSettings) => void
+): () => void {
+  const unsubProducts = onSnapshot(
+    collection(db, 'products'),
+    (snapshot) => {
+      if (!snapshot.empty) {
+        const list: Product[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as Product);
+        });
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        saveProducts(list);
+        onProductsUpdate(list);
+      }
+    },
+    (err) => console.warn('Firestore 제품 실시간 감지 오류:', err)
+  );
+
+  const unsubSettings = onSnapshot(
+    doc(db, 'settings', 'global'),
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as StoreSettings;
+        const merged: StoreSettings = {
+          ...DEFAULT_SETTINGS,
+          ...data,
+          categories: Array.isArray(data.categories) && data.categories.length > 0
+            ? data.categories
+            : DEFAULT_SETTINGS.categories,
+        };
+        saveSettings(merged);
+        onSettingsUpdate(merged);
+      }
+    },
+    (err) => console.warn('Firestore 설정 실시간 감지 오류:', err)
+  );
+
+  return () => {
+    unsubProducts();
+    unsubSettings();
+  };
+}
+
+// ==========================================
+// [관리자 비밀번호 & 세션 (보안을 위해 Firestore에 해시 저장 + 로컬 보조)]
+// ==========================================
+
 export async function hashString(str: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(str);
@@ -249,26 +469,51 @@ export async function hashString(str: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 비밀번호 설정 여부 확인
 export function hasAdminPassword(): boolean {
   return !!localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD);
 }
 
-// 비밀번호 신규 설정
 export async function setAdminPassword(password: string): Promise<void> {
   const hash = await hashString(password);
   localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, hash);
+  try {
+    await setDoc(doc(db, 'settings', 'auth'), { passwordHash: hash });
+  } catch (err) {
+    console.warn('관리자 비밀번호 클라우드 동기화 경고:', err);
+  }
 }
 
-// 비밀번호 검증
 export async function verifyAdminPassword(password: string): Promise<boolean> {
+  const inputHash = await hashString(password);
+  
+  // 먼저 클라우드에서 최신 비밀번호 해시 확인
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'auth'));
+    if (snap.exists() && snap.data().passwordHash) {
+      const cloudHash = snap.data().passwordHash;
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, cloudHash);
+      return cloudHash === inputHash;
+    }
+  } catch (err) {
+    console.warn('클라우드 비밀번호 확인 실패, 로컬 비교:', err);
+  }
+
   const storedHash = localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD);
   if (!storedHash) return false;
-  const inputHash = await hashString(password);
   return storedHash === inputHash;
 }
 
-// 관리자 세션 상태 관리
+export async function checkCloudAdminPasswordConfigured(): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'auth'));
+    if (snap.exists() && snap.data().passwordHash) {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, snap.data().passwordHash);
+      return true;
+    }
+  } catch {}
+  return hasAdminPassword();
+}
+
 export function isAdminAuthenticated(): boolean {
   return sessionStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION) === 'true';
 }
@@ -308,9 +553,9 @@ export function importBackupJson(jsonString: string): { success: boolean; messag
     if (!data.products || !Array.isArray(data.products)) {
       return { success: false, message: '올바른 백업 파일 형식이 아닙니다 (제품 목록 누락).' };
     }
-    saveProducts(data.products);
+    syncAllProductsToCloud(data.products).catch(console.error);
     if (data.settings) {
-      saveSettings(data.settings);
+      saveSettingsToCloud(data.settings).catch(console.error);
     }
     return { success: true, message: '성공적으로 복원되었습니다!' };
   } catch {
