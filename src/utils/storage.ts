@@ -157,6 +157,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
   },
 ];
 
+// 기본 카테고리 목록
+export const DEFAULT_CATEGORIES = ['WRO', 'CoSpace'];
+
 // 기본 사이트 전역 설정
 export const DEFAULT_SETTINGS: StoreSettings = {
   heroTitle: 'WRO 로봇 조립도 & 소스코드\nCoSpace Rescue 알고리즘 마켓',
@@ -165,6 +168,9 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   adminEmail: 'pompeii928@gmail.com',
   youtubeChannelUrl: 'https://www.youtube.com/channel/UC_o1n4QCZyABlKCdxI7cFPA',
   customLogoUrl: '/custom_logo.png',
+  categories: ['WRO', 'CoSpace'],
+  youtubeDisplayCategory: 'ALL',
+  showHeroSection: false, // 사용자 요청으로 히어로 섹션 기본 숨김
 };
 
 // 제품 목록 불러오기
@@ -208,6 +214,15 @@ export function loadSettings(): StoreSettings {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      categories: Array.isArray(parsed.categories) && parsed.categories.length > 0 
+        ? parsed.categories 
+        : DEFAULT_SETTINGS.categories,
+      youtubeDisplayCategory: parsed.youtubeDisplayCategory !== undefined 
+        ? parsed.youtubeDisplayCategory 
+        : DEFAULT_SETTINGS.youtubeDisplayCategory,
+      showHeroSection: parsed.showHeroSection !== undefined 
+        ? parsed.showHeroSection 
+        : false,
       customLogoUrl: parsed.customLogoUrl || DEFAULT_SETTINGS.customLogoUrl,
     };
   } catch (err) {

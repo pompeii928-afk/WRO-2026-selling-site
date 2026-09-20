@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { Youtube } from 'lucide-react';
 import { LanguageCode, Product, StoreSettings, ProductCategory } from './types';
 import { translations } from './locales/translations';
 import { loadProducts, loadSettings } from './utils/storage';
@@ -128,11 +129,26 @@ export default function App() {
     setSettings(loadSettings());
   };
 
+  // 카테고리 목록 (설정에 등록된 카테고리 또는 기본값)
+  const categories = useMemo(() => {
+    return settings.categories && settings.categories.length > 0
+      ? settings.categories
+      : ['WRO', 'CoSpace'];
+  }, [settings.categories]);
+
   // 카테고리별 필터링된 제품 목록
   const filteredProducts = useMemo(() => {
     if (selectedCategory === 'ALL') return products;
     return products.filter((p) => p.category === selectedCategory);
   }, [products, selectedCategory]);
+
+  // 유튜브 채널/영상 섹션 표시 여부 (어드민에서 설정한 youtubeDisplayCategory 반영)
+  const isYoutubeVisible = useMemo(() => {
+    if (!settings.youtubeDisplayCategory || settings.youtubeDisplayCategory === 'ALL') {
+      return true;
+    }
+    return selectedCategory === settings.youtubeDisplayCategory;
+  }, [settings.youtubeDisplayCategory, selectedCategory]);
 
   // 관리자 페이지가 활성화된 경우 관리자 콘솔 렌더링
   if (currentPage === 'admin') {
@@ -161,18 +177,20 @@ export default function App() {
       {/* 홈 화면 메인 콘텐츠 */}
       {currentPage === 'home' && (
         <main className="flex-1">
-          {/* [0. 참고 디자인] 히어로 섹션 */}
-          <Hero
-            currentLang={currentLang}
-            settings={settings}
-            onExploreClick={() => {
-              const el = document.getElementById('products-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-          />
+          {/* [0. 참고 디자인] 히어로 섹션 (설정에서 showHeroSection 활성화 시 표시) */}
+          {settings.showHeroSection && (
+            <Hero
+              currentLang={currentLang}
+              settings={settings}
+              onExploreClick={() => {
+                const el = document.getElementById('products-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            />
+          )}
 
           {/* [2. 판매 제품] 제품 그리드 섹션 */}
-          <section id="products-section" className="py-16 md:py-24 bg-white scroll-mt-20">
+          <section id="products-section" className={`${settings.showHeroSection ? 'py-16 md:py-24' : 'pt-8 md:pt-14 pb-16 md:pb-24'} bg-white scroll-mt-20`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
               {/* 섹션 제목 및 카테고리 탭 */}
@@ -186,11 +204,11 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* 카테고리 분류 필터: 전체, WRO, CoSpace */}
-                <div className="flex items-center gap-2 bg-[#f4f4f0] p-1.5 rounded-xl self-start md:self-auto">
+                {/* 카테고리 분류 필터: 전체 + 등록된 모든 카테고리 */}
+                <div className="flex flex-wrap items-center gap-1.5 bg-[#f4f4f0] p-1.5 rounded-xl self-start md:self-auto">
                   <button
                     onClick={() => setSelectedCategory('ALL')}
-                    className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       selectedCategory === 'ALL'
                         ? 'bg-[#1a1a18] text-white shadow-xs'
                         : 'text-[#666660] hover:text-[#1a1a18]'
@@ -199,27 +217,32 @@ export default function App() {
                     {t.products.all} ({products.length})
                   </button>
 
-                  <button
-                    onClick={() => setSelectedCategory('WRO')}
-                    className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                      selectedCategory === 'WRO'
-                        ? 'bg-[#1a1a18] text-white shadow-xs'
-                        : 'text-[#666660] hover:text-[#1a1a18]'
-                    }`}
-                  >
-                    {t.products.wro}
-                  </button>
+                  {categories.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    const count = products.filter((p) => p.category === cat).length;
+                    const isYoutubeCat = settings.youtubeDisplayCategory === cat;
 
-                  <button
-                    onClick={() => setSelectedCategory('CoSpace')}
-                    className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                      selectedCategory === 'CoSpace'
-                        ? 'bg-[#D85A30] text-white shadow-xs'
-                        : 'text-[#666660] hover:text-[#1a1a18]'
-                    }`}
-                  >
-                    {t.products.cospace}
-                  </button>
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#1a1a18] text-white shadow-xs'
+                            : 'text-[#666660] hover:text-[#1a1a18]'
+                        }`}
+                      >
+                        <span>{cat}</span>
+                        <span className="text-[11px] opacity-75 font-normal">({count})</span>
+                        {isYoutubeCat && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#cc0000] text-white text-[10px] font-bold shadow-xs">
+                            <Youtube className="w-2.5 h-2.5" />
+                            <span>YouTube</span>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -246,12 +269,14 @@ export default function App() {
             </div>
           </section>
 
-          {/* [4. 유튜브 연동] 홈 화면 추천 영상 섹션 */}
-          <VideosSection
-            currentLang={currentLang}
-            settings={settings}
-            isStandalonePage={false}
-          />
+          {/* [4. 유튜브 연동] 홈 화면 추천 영상 섹션 (어드민 설정에 따라 선택된 카테고리에서 표시) */}
+          {isYoutubeVisible && (
+            <VideosSection
+              currentLang={currentLang}
+              settings={settings}
+              isStandalonePage={false}
+            />
+          )}
 
           {/* 구매 및 기술 문의 섹션 */}
           <ContactSection

@@ -29,12 +29,6 @@ export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClic
       <div className="absolute inset-0 bg-[radial-gradient(#e5e5e0_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
 
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        {/* 상단 뱃지 */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#f4f4f0] border border-[#e2e2dc] text-xs font-semibold text-[#5a5a54] mb-8 tracking-wide">
-          <span className="w-2 h-2 rounded-full bg-[#D85A30] animate-pulse" />
-          <span>{t.hero.badge}</span>
-        </div>
-
         {/* 메인 헤드라인: 높은 대비, 가독성 높은 디스플레이 타이포그래피 */}
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-[#1a1a18] tracking-tight leading-[1.18] whitespace-pre-line mb-6 font-['Pretendard']">
           {title}

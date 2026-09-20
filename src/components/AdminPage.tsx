@@ -31,7 +31,12 @@ import {
   AlertCircle,
   CheckCircle2,
   Play,
-  RotateCcw
+  RotateCcw,
+  FolderKanban,
+  Youtube,
+  Check,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { LanguageCode, Product, StoreSettings, ProductCategory } from '../types';
 import { 
@@ -70,11 +75,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
   const [authSuccess, setAuthSuccess] = useState('');
 
   // 탭 상태
-  const [activeTab, setActiveTab] = useState<'products' | 'settings' | 'backup' | 'languages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'settings' | 'backup' | 'languages'>('products');
 
   // 데이터 상태
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+
+  // 카테고리 관리 상태
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [editingCategoryIndex, setEditingCategoryIndex] = useState<number | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
 
   // 제품 편집 모달/폼 상태
   const [isEditingProduct, setIsEditingProduct] = useState<boolean>(false);
@@ -174,7 +184,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
   // 제품 등록 폼 열기
   const handleOpenAddProduct = () => {
     setEditingProductId(null);
-    setFormCategory('WRO');
+    const availableCats = settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace'];
+    setFormCategory(availableCats[0]);
     setFormName('');
     setFormPrice(45000);
     setFormCurrency('KRW');
@@ -383,6 +394,184 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
     e.preventDefault();
     saveSettings(settings);
     showFeedback('사이트 설정이 성공적으로 저장되었습니다.');
+    onDataChange?.();
+  };
+
+  // ==========================================
+  // [카테고리 관리 핸들러]
+  // ==========================================
+  
+  // 새 카테고리 추가
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCategoryInput.trim();
+    if (!trimmed) {
+      alert('카테고리 이름을 입력해주세요.');
+      return;
+    }
+    const currentCats = settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace'];
+    if (currentCats.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      alert('이미 존재하는 카테고리 이름입니다.');
+      return;
+    }
+
+    const updatedCats = [...currentCats, trimmed];
+    const updatedSettings: StoreSettings = {
+      ...settings,
+      categories: updatedCats,
+    };
+
+    setSettings(updatedSettings);
+    saveSettings(updatedSettings);
+    setNewCategoryInput('');
+    showFeedback(`"${trimmed}" 카테고리가 새로 추가되었습니다.`);
+    onDataChange?.();
+  };
+
+  // 카테고리 이름 편집 시작
+  const handleStartEditCategory = (index: number, name: string) => {
+    setEditingCategoryIndex(index);
+    setEditingCategoryName(name);
+  };
+
+  // 카테고리 이름 수정 완료 (관련 제품 카테고리도 자동 일괄 변경)
+  const handleSaveEditCategory = (oldName: string) => {
+    const trimmed = editingCategoryName.trim();
+    if (!trimmed) {
+      alert('카테고리 이름을 입력해주세요.');
+      return;
+    }
+    if (trimmed === oldName) {
+      setEditingCategoryIndex(null);
+      return;
+    }
+
+    const currentCats = settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace'];
+    if (currentCats.some((c, i) => i !== editingCategoryIndex && c.toLowerCase() === trimmed.toLowerCase())) {
+      alert('이미 등록된 다른 카테고리 이름입니다.');
+      return;
+    }
+
+    const updatedCats = currentCats.map((c) => (c === oldName ? trimmed : c));
+
+    // 유튜브 노출 카테고리가 해당 카테고리였을 경우 함께 업데이트
+    let updatedYoutubeCat = settings.youtubeDisplayCategory;
+    if (settings.youtubeDisplayCategory === oldName) {
+      updatedYoutubeCat = trimmed;
+    }
+
+    const updatedSettings: StoreSettings = {
+      ...settings,
+      categories: updatedCats,
+      youtubeDisplayCategory: updatedYoutubeCat,
+    };
+
+    // 기존 제품들 중 해당 카테고리를 쓰던 제품의 카테고리도 자동 동기화!
+    let updatedProdCount = 0;
+    const updatedProducts = products.map((p) => {
+      if (p.category === oldName) {
+        updatedProdCount++;
+        return { ...p, category: trimmed };
+      }
+      return p;
+    });
+
+    setSettings(updatedSettings);
+    saveSettings(updatedSettings);
+    if (updatedProdCount > 0) {
+      setProducts(updatedProducts);
+      saveProducts(updatedProducts);
+    }
+    setEditingCategoryIndex(null);
+    showFeedback(`카테고리명이 "${trimmed}"(으)로 변경되었습니다. (제품 ${updatedProdCount}개 자동 동기화)`);
+    onDataChange?.();
+  };
+
+  // 카테고리 삭제 (제품이 있을 경우 첫 번째 카테고리로 안전 이동)
+  const handleDeleteCategory = (catToDelete: string) => {
+    const currentCats = settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace'];
+    if (currentCats.length <= 1) {
+      alert('스토어 운영을 위해 최소 1개 이상의 카테고리가 유지되어야 합니다.');
+      return;
+    }
+
+    const attachedCount = products.filter((p) => p.category === catToDelete).length;
+    let msg = `정말 "${catToDelete}" 카테고리를 삭제하시겠습니까?`;
+    if (attachedCount > 0) {
+      msg += `\n\n[안내] 이 카테고리에 속한 제품이 ${attachedCount}개 있습니다. 삭제 시 기본 카테고리로 자동 이동됩니다.`;
+    }
+
+    if (!window.confirm(msg)) return;
+
+    const remainingCats = currentCats.filter((c) => c !== catToDelete);
+    const fallbackCat = remainingCats[0];
+
+    // 유튜브 노출 카테고리가 삭제된 경우 ALL로 리셋
+    let updatedYoutubeCat = settings.youtubeDisplayCategory;
+    if (settings.youtubeDisplayCategory === catToDelete) {
+      updatedYoutubeCat = 'ALL';
+    }
+
+    const updatedSettings: StoreSettings = {
+      ...settings,
+      categories: remainingCats,
+      youtubeDisplayCategory: updatedYoutubeCat,
+    };
+
+    let movedCount = 0;
+    const updatedProducts = products.map((p) => {
+      if (p.category === catToDelete) {
+        movedCount++;
+        return { ...p, category: fallbackCat };
+      }
+      return p;
+    });
+
+    setSettings(updatedSettings);
+    saveSettings(updatedSettings);
+    if (movedCount > 0) {
+      setProducts(updatedProducts);
+      saveProducts(updatedProducts);
+    }
+
+    showFeedback(`"${catToDelete}" 카테고리가 삭제되었습니다.${movedCount > 0 ? ` (제품 ${movedCount}개 "${fallbackCat}" 카테고리로 이동)` : ''}`);
+    onDataChange?.();
+  };
+
+  // 카테고리 순서 이동
+  const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
+    const currentCats = [...(settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace'])];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentCats.length) return;
+
+    const temp = currentCats[index];
+    currentCats[index] = currentCats[targetIndex];
+    currentCats[targetIndex] = temp;
+
+    const updatedSettings: StoreSettings = {
+      ...settings,
+      categories: currentCats,
+    };
+
+    setSettings(updatedSettings);
+    saveSettings(updatedSettings);
+    showFeedback('카테고리 순서가 변경되었습니다.');
+    onDataChange?.();
+  };
+
+  // 유튜브 노출 카테고리 변경
+  const handleChangeYoutubeCategory = (cat: string) => {
+    const updatedSettings: StoreSettings = {
+      ...settings,
+      youtubeDisplayCategory: cat,
+    };
+    setSettings(updatedSettings);
+    saveSettings(updatedSettings);
+    showFeedback(
+      cat === 'ALL'
+        ? '유튜브 채널/영상이 모든 카테고리에서 항상 표시되도록 설정되었습니다.'
+        : `유튜브 채널/영상이 "${cat}" 카테고리에 표시되도록 설정되었습니다.`
+    );
     onDataChange?.();
   };
 
@@ -636,6 +825,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
           </button>
 
           <button
+            onClick={() => { setActiveTab('categories'); setIsEditingProduct(false); }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
+              activeTab === 'categories' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
+            }`}
+          >
+            <FolderKanban className="w-4 h-4" />
+            <span>카테고리 관리 ({(settings.categories || ['WRO', 'CoSpace']).length})</span>
+          </button>
+
+          <button
             onClick={() => { setActiveTab('settings'); setIsEditingProduct(false); }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
               activeTab === 'settings' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
@@ -787,11 +986,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
                       <label className="block text-xs font-bold text-[#33332f] mb-1.5">카테고리 분류</label>
                       <select
                         value={formCategory}
-                        onChange={(e) => setFormCategory(e.target.value as ProductCategory)}
+                        onChange={(e) => setFormCategory(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-[#deded8] bg-[#fbfbfa] text-sm text-[#1a1a18] font-medium outline-none focus:border-[#D85A30]"
                       >
-                        <option value="WRO">WRO (로봇 조립도 + 소스코드)</option>
-                        <option value="CoSpace">CoSpace Rescue (소스코드)</option>
+                        {(settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace']).map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                        {/* 현재 제품의 카테고리가 목록에 없을 경우를 위한 안전 옵션 */}
+                        {formCategory && !(settings.categories || ['WRO', 'CoSpace']).includes(formCategory) && (
+                          <option value={formCategory}>{formCategory}</option>
+                        )}
                       </select>
                     </div>
 
@@ -1084,7 +1290,216 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
         )}
 
         {/* ==================================================== */}
-        {/* [탭 2] 사이트 설정 탭 */}
+        {/* [탭 2] 카테고리 관리 탭 */}
+        {/* ==================================================== */}
+        {activeTab === 'categories' && (
+          <div className="space-y-8 max-w-4xl">
+            {/* 1. 유튜브 채널 노출 카테고리 설정 카드 */}
+            <div className="bg-white rounded-2xl border border-[#ebebe6] p-6 sm:p-8 shadow-xs">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-bold mb-2">
+                    <Youtube className="w-4 h-4 text-[#cc0000]" />
+                    <span>유튜브 채널 노출 위치 설정</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-[#1a1a18]">
+                    유튜브 채널이 보일 카테고리 설정
+                  </h2>
+                  <p className="text-xs text-[#70706a] mt-1">
+                    방문자가 특정 카테고리를 선택했을 때 공식 유튜브 채널과 추천 영상 섹션이 함께 노출되도록 지정할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-5 rounded-xl bg-[#fafafa] border border-[#e8e8e3] space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className="text-xs font-bold text-[#33332f] shrink-0">
+                    현재 표시 위치:
+                  </span>
+                  <select
+                    value={settings.youtubeDisplayCategory || 'ALL'}
+                    onChange={(e) => handleChangeYoutubeCategory(e.target.value)}
+                    className="flex-1 max-w-md px-3.5 py-2.5 rounded-xl border border-[#deded8] bg-white text-sm font-semibold text-[#1a1a18] outline-none focus:border-[#D85A30] cursor-pointer shadow-xs"
+                  >
+                    <option value="ALL">
+                      🌟 전체 카테고리 (홈 화면에서 항상 표시)
+                    </option>
+                    {(settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace']).map((cat) => (
+                      <option key={cat} value={cat}>
+                        🏷️ {cat} 카테고리 선택 시에만 표시
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="text-xs text-[#666660] bg-white p-3 rounded-lg border border-[#ecece8] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    {settings.youtubeDisplayCategory === 'ALL'
+                      ? '현재 "전체 카테고리"로 설정되어 있어, 방문자가 어떤 카테고리를 보더라도 하단에 유튜브 채널/영상이 항상 노출됩니다.'
+                      : `현재 "${settings.youtubeDisplayCategory}" 카테고리로 설정되어 있어, 방문자가 "${settings.youtubeDisplayCategory}" 탭을 클릭했을 때 유튜브 영상 및 채널이 연동되어 표시됩니다.`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. 전체 카테고리 목록 및 추가/수정 관리 */}
+            <div className="bg-white rounded-2xl border border-[#ebebe6] p-6 sm:p-8 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-[#1a1a18]">
+                    사이트 카테고리 전체 관리
+                  </h2>
+                  <p className="text-xs text-[#70706a] mt-1">
+                    스토어의 모든 카테고리를 자유롭게 추가, 수정, 순서 변경, 삭제할 수 있습니다. 카테고리명 변경 시 등록된 제품들도 자동 동기화됩니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 새 카테고리 추가 폼 */}
+              <form onSubmit={handleAddCategory} className="mb-6 p-4 rounded-xl bg-[#f7f7f4] border border-[#e8e8e1]">
+                <label className="block text-xs font-bold text-[#33332f] mb-2">
+                  새 카테고리 추가
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    placeholder="예: FLL, FTC, 3D 파츠, 알고리즘, 교육자료 등..."
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-[#deded8] bg-white text-sm text-[#1a1a18] outline-none focus:border-[#D85A30]"
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1a1a18] hover:bg-[#333330] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>추가하기</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* 카테고리 목록 테이블/카드 */}
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-[#888880] px-2 flex items-center justify-between">
+                  <span>등록된 카테고리 ({(settings.categories || ['WRO', 'CoSpace']).length}개)</span>
+                  <span>순서 / 수정 / 삭제</span>
+                </div>
+
+                {(settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace']).map((cat, index, arr) => {
+                  const prodCount = products.filter((p) => p.category === cat).length;
+                  const isEditing = editingCategoryIndex === index;
+                  const isYoutube = settings.youtubeDisplayCategory === cat;
+
+                  return (
+                    <div
+                      key={cat}
+                      className="p-4 rounded-xl border border-[#ecece8] bg-[#fbfbfa] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[#deded8]"
+                    >
+                      {/* 카테고리 정보 / 편집 인풋 */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="w-6 h-6 rounded-full bg-[#ebebe6] text-[#70706a] text-xs font-bold flex items-center justify-center shrink-0">
+                          {index + 1}
+                        </span>
+
+                        {isEditing ? (
+                          <div className="flex items-center gap-2 flex-1 max-w-sm">
+                            <input
+                              type="text"
+                              value={editingCategoryName}
+                              onChange={(e) => setEditingCategoryName(e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg border border-[#D85A30] bg-white text-sm font-bold text-[#1a1a18] outline-none"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditCategory(cat)}
+                              className="px-3 py-1.5 rounded-lg bg-[#D85A30] text-white text-xs font-bold hover:bg-[#c04e28] shrink-0 cursor-pointer"
+                            >
+                              저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCategoryIndex(null)}
+                              className="px-3 py-1.5 rounded-lg bg-white border border-[#deded8] text-xs font-bold text-[#666660] hover:bg-[#f0f0eb] shrink-0 cursor-pointer"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-extrabold text-sm sm:text-base text-[#1a1a18]">
+                              {cat}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-[#ecece8] text-[#555550] font-medium">
+                              제품 {prodCount}개
+                            </span>
+                            {isYoutube && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-100 text-[#cc0000] text-[11px] font-bold">
+                                <Youtube className="w-3 h-3" />
+                                <span>유튜브 연동 카테고리</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 액션 컨트롤 버튼들 */}
+                      {!isEditing && (
+                        <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                          {/* 순서 위로 */}
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => handleMoveCategory(index, 'up')}
+                            className="p-1.5 rounded-lg border border-[#deded8] bg-white hover:bg-[#f0f0eb] disabled:opacity-30 disabled:cursor-not-allowed text-[#555550] transition-colors cursor-pointer"
+                            title="위로 이동"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* 순서 아래로 */}
+                          <button
+                            type="button"
+                            disabled={index === arr.length - 1}
+                            onClick={() => handleMoveCategory(index, 'down')}
+                            className="p-1.5 rounded-lg border border-[#deded8] bg-white hover:bg-[#f0f0eb] disabled:opacity-30 disabled:cursor-not-allowed text-[#555550] transition-colors cursor-pointer"
+                            title="아래로 이동"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* 이름 수정 */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditCategory(index, cat)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#deded8] bg-white hover:bg-[#f0f0eb] text-xs font-bold text-[#33332f] transition-colors cursor-pointer"
+                          >
+                            <Edit className="w-3 h-3 text-[#70706a]" />
+                            <span>수정</span>
+                          </button>
+
+                          {/* 삭제 */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(cat)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>삭제</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* [탭 3] 사이트 설정 탭 */}
         {/* ==================================================== */}
         {activeTab === 'settings' && (
           <div className="bg-white rounded-2xl border border-[#ebebe6] p-6 sm:p-8 shadow-sm max-w-3xl">
@@ -1127,6 +1542,52 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
                   placeholder="https://www.youtube.com/channel/..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#deded8] bg-[#fbfbfa] text-sm text-[#1a1a18] outline-none focus:border-[#D85A30]"
                 />
+              </div>
+
+              {/* 유튜브 채널이 표시될 카테고리 선택 */}
+              <div className="p-4 rounded-xl bg-[#fdfaf8] border border-[#fae2d8]">
+                <label className="block text-xs font-bold text-[#D85A30] mb-1.5 flex items-center gap-1.5">
+                  <Youtube className="w-4 h-4 text-[#cc0000]" />
+                  <span>유튜브 채널/영상이 표시될 카테고리</span>
+                </label>
+                <p className="text-xs text-[#70706a] mb-2.5">
+                  방문자가 특정 카테고리를 선택했을 때 공식 유튜브 영상 섹션이 해당 카테고리와 함께 표시되도록 설정합니다.
+                </p>
+                <select
+                  value={settings.youtubeDisplayCategory || 'ALL'}
+                  onChange={(e) => setSettings({ ...settings, youtubeDisplayCategory: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#deded8] bg-white text-sm font-semibold text-[#1a1a18] outline-none focus:border-[#D85A30] cursor-pointer"
+                >
+                  <option value="ALL">🌟 전체 카테고리 (홈 화면에서 항상 표시)</option>
+                  {(settings.categories && settings.categories.length > 0 ? settings.categories : ['WRO', 'CoSpace']).map((cat) => (
+                    <option key={cat} value={cat}>
+                      🏷️ {cat} 카테고리 선택 시에만 표시
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 홈 화면 히어로 배너 섹션 표시 여부 토글 */}
+              <div className="p-4 rounded-xl bg-[#f7f7f5] border border-[#e2e2dc]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1a1a18]">
+                      홈 화면 히어로 배너 섹션 표시 여부
+                    </label>
+                    <p className="text-xs text-[#70706a] mt-0.5">
+                      홈 상단의 큰 제목 및 소개글 배너를 표시할지 설정합니다. (끄면 방문자가 첫 화면에서 바로 제품 목록을 봅니다)
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                    <input
+                      type="checkbox"
+                      checked={!!settings.showHeroSection}
+                      onChange={(e) => setSettings({ ...settings, showHeroSection: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-[#deded8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#D85A30]"></div>
+                  </label>
+                </div>
               </div>
 
               {/* 히어로 메인 타이틀 */}
