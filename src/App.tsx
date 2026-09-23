@@ -11,9 +11,17 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Youtube } from 'lucide-react';
-import { LanguageCode, Product, StoreSettings, ProductCategory } from './types';
+import { LanguageCode, Product, StoreSettings, ProductCategory, VideoItem } from './types';
 import { translations } from './locales/translations';
-import { loadProducts, loadSettings, subscribeToCloudData, fetchCloudProducts, fetchCloudSettings } from './utils/storage';
+import { 
+  loadProducts, 
+  loadSettings, 
+  loadVideos,
+  subscribeToCloudData, 
+  fetchCloudProducts, 
+  fetchCloudSettings,
+  fetchCloudVideos 
+} from './utils/storage';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
@@ -61,6 +69,7 @@ export default function App() {
   // 데이터 상태
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<StoreSettings>(loadSettings);
+  const [videos, setVideos] = useState<VideoItem[]>(loadVideos);
 
   // 카테고리 필터 상태 ('ALL' | 'WRO' | 'CoSpace')
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | ProductCategory>('ALL');
@@ -76,6 +85,7 @@ export default function App() {
     // 1. 빠른 초기 화면 표시를 위해 로컬 캐시 우선 반영
     setProducts(loadProducts());
     setSettings(loadSettings());
+    setVideos(loadVideos());
 
     // 2. Firestore 클라우드에서 최신 데이터 가져오기
     fetchCloudProducts().then((cloudProds) => {
@@ -88,14 +98,22 @@ export default function App() {
         setSettings(cloudSettings);
       }
     });
+    fetchCloudVideos().then((cloudVideos) => {
+      if (cloudVideos && cloudVideos.length > 0) {
+        setVideos(cloudVideos);
+      }
+    });
 
-    // 3. Firestore 실시간 리스너 구독 (관리자가 수정 시 모든 방문자 화면에 즉각 실시간 반영)
+    // 3. Firestore 실시간 리스너 구독 (관리자가 수정/삭제 시 모든 방문자 화면에 즉각 실시간 반영)
     const unsubscribe = subscribeToCloudData(
       (updatedProducts) => {
         setProducts(updatedProducts);
       },
       (updatedSettings) => {
         setSettings(updatedSettings);
+      },
+      (updatedVideos) => {
+        setVideos(updatedVideos);
       }
     );
 
@@ -153,6 +171,7 @@ export default function App() {
   const handleDataChange = () => {
     setProducts(loadProducts());
     setSettings(loadSettings());
+    setVideos(loadVideos());
   };
 
   // 카테고리 목록 (설정에 등록된 카테고리 또는 기본값)
@@ -183,6 +202,9 @@ export default function App() {
         currentLang={currentLang}
         onExit={() => handleNavigate('home')}
         onDataChange={handleDataChange}
+        initialProducts={products}
+        initialSettings={settings}
+        initialVideos={videos}
       />
     );
   }
@@ -300,6 +322,7 @@ export default function App() {
             <VideosSection
               currentLang={currentLang}
               settings={settings}
+              videos={videos}
               isStandalonePage={false}
             />
           )}
@@ -318,6 +341,7 @@ export default function App() {
           <VideosSection
             currentLang={currentLang}
             settings={settings}
+            videos={videos}
             isStandalonePage={true}
           />
         </main>

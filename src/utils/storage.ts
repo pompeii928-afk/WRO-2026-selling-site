@@ -14,11 +14,12 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Product, StoreSettings } from '../types';
+import { Product, StoreSettings, VideoItem } from '../types';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'ROBO_STORE_PRODUCTS_V2',
   SETTINGS: 'ROBO_STORE_SETTINGS_V2',
+  VIDEOS: 'ROBO_STORE_VIDEOS_V2',
   ADMIN_PASSWORD: 'ROBO_STORE_ADMIN_PASSWORD_HASH',
   ACTIVE_SESSION: 'ROBO_STORE_ADMIN_SESSION',
   LANGUAGE: 'ROBO_STORE_LANGUAGE',
@@ -171,6 +172,73 @@ export const DEFAULT_PRODUCTS: Product[] = [
 // 기본 카테고리 목록
 export const DEFAULT_CATEGORIES = ['WRO', 'CoSpace'];
 
+// 기본 영상 카테고리 목록
+export const DEFAULT_VIDEO_CATEGORIES = [
+  'WRO Senior',
+  'WRO Junior',
+  'CoSpace Rescue',
+  'Tutorial',
+  'Engineering'
+];
+
+// 기본 유튜브 영상 목록
+export const DEFAULT_VIDEOS: VideoItem[] = [
+  {
+    id: 'vid-1',
+    title: 'WRO RoboMission Senior 2024 - 만점 주행 풀코스 데모 (Dual Color Sensor PID Run)',
+    youtubeId: 'S2fFv3y29O8',
+    category: 'WRO Senior',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
+    duration: '02:15',
+    order: 1,
+  },
+  {
+    id: 'vid-2',
+    title: 'WRO RoboMission Junior 2024 - 패시브 랙 앤 피니언 그리퍼 오브젝트 적재 테스트',
+    youtubeId: 'b0bA3YxZvxA',
+    category: 'WRO Junior',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1561557944-6e7860d1a7eb?auto=format&fit=crop&w=800&q=80',
+    duration: '01:45',
+    order: 2,
+  },
+  {
+    id: 'vid-3',
+    title: 'CoSpace Rescue Virtual Challenge - Dynamic A* 장애물 회피 시뮬레이션 데모',
+    youtubeId: 'kYJvYg_V408',
+    category: 'CoSpace Rescue',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
+    duration: '03:10',
+    order: 3,
+  },
+  {
+    id: 'vid-4',
+    title: 'LEGO Spike Prime 자이로 센서 누적 오차 보정(Gyro Drift) 및 라인트레이싱 튜토리얼',
+    youtubeId: 'YQHsXMglC9A',
+    category: 'Tutorial',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
+    duration: '05:32',
+    order: 4,
+  },
+  {
+    id: 'vid-5',
+    title: 'WRO 초고속 회전 모터 기어비 선정 및 토크 최적화 가이드',
+    youtubeId: 'dQw4w9WgXcQ',
+    category: 'Engineering',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+    duration: '04:18',
+    order: 5,
+  },
+  {
+    id: 'vid-6',
+    title: 'CoSpace Rescue 색상 감지 센서 캘리브레이션과 텔레포트 존 감지 기법',
+    youtubeId: 'eVTXPUF4Oz4',
+    category: 'CoSpace Rescue',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80',
+    duration: '03:40',
+    order: 6,
+  },
+];
+
 // 기본 사이트 전역 설정
 export const DEFAULT_SETTINGS: StoreSettings = {
   heroTitle: 'WRO 로봇 조립도 & 소스코드\nCoSpace Rescue 알고리즘 마켓',
@@ -180,6 +248,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   youtubeChannelUrl: 'https://www.youtube.com/channel/UC_o1n4QCZyABlKCdxI7cFPA',
   customLogoUrl: '/custom_logo.png',
   categories: ['WRO', 'CoSpace'],
+  videoCategories: ['WRO Senior', 'WRO Junior', 'CoSpace Rescue', 'Tutorial', 'Engineering'],
   youtubeDisplayCategory: 'ALL',
   showHeroSection: false, // 사용자 요청으로 히어로 섹션 기본 숨김
 };
@@ -228,6 +297,9 @@ export function loadSettings(): StoreSettings {
       categories: Array.isArray(parsed.categories) && parsed.categories.length > 0 
         ? parsed.categories 
         : DEFAULT_SETTINGS.categories,
+      videoCategories: Array.isArray(parsed.videoCategories) && parsed.videoCategories.length > 0
+        ? parsed.videoCategories
+        : DEFAULT_SETTINGS.videoCategories,
       youtubeDisplayCategory: parsed.youtubeDisplayCategory !== undefined 
         ? parsed.youtubeDisplayCategory 
         : DEFAULT_SETTINGS.youtubeDisplayCategory,
@@ -250,19 +322,44 @@ export function saveSettings(settings: StoreSettings): void {
   }
 }
 
+export function loadVideos(): VideoItem[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.VIDEOS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(DEFAULT_VIDEOS));
+      return DEFAULT_VIDEOS;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return DEFAULT_VIDEOS;
+  } catch (err) {
+    console.error('영상 로컬 로딩 실패:', err);
+    return DEFAULT_VIDEOS;
+  }
+}
+
+export function saveVideos(videos: VideoItem[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(videos));
+  } catch (err) {
+    console.error('영상 로컬 저장 실패:', err);
+  }
+}
+
 // ==========================================
 // [Firestore 클라우드 연동 함수 (모든 사용자 실시간 공유)]
 // ==========================================
 
 /**
- * 클라우드에서 제품 목록을 가져오며, Firestore가 비어있으면 로컬/기본 제품으로 자동 시드
+ * 클라우드에서 제품 목록을 가져오며, Firestore가 비어있으면 기본 제품으로 자동 시드
  */
 export async function fetchCloudProducts(): Promise<Product[]> {
   try {
     const colRef = collection(db, 'products');
     const snapshot = await getDocs(colRef);
     if (snapshot.empty) {
-      // 로컬에 저장된 제품이 있으면 그것으로, 없으면 DEFAULT_PRODUCTS로 클라우드에 초기 시드
       const initial = loadProducts();
       await syncAllProductsToCloud(initial);
       return initial;
@@ -273,10 +370,7 @@ export async function fetchCloudProducts(): Promise<Product[]> {
       fetched.push(docSnap.data() as Product);
     });
 
-    // 정렬 (최신순 또는 ID순)
     fetched.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-    // 로컬 캐시 업데이트
     saveProducts(fetched);
     return fetched;
   } catch (err) {
@@ -293,7 +387,6 @@ export async function saveProductToCloud(product: Product): Promise<void> {
     const docRef = doc(db, 'products', product.id);
     await setDoc(docRef, product);
 
-    // 로컬 캐시에도 반영
     const current = loadProducts();
     const idx = current.findIndex((p) => p.id === product.id);
     let updated: Product[];
@@ -334,7 +427,6 @@ export async function syncAllProductsToCloud(products: Product[]): Promise<void>
   try {
     saveProducts(products);
 
-    // 기존 제품 컬렉션 스냅샷 가져오기
     const colRef = collection(db, 'products');
     const existingSnap = await getDocs(colRef);
     const existingIds = new Set(existingSnap.docs.map((d) => d.id));
@@ -342,14 +434,12 @@ export async function syncAllProductsToCloud(products: Product[]): Promise<void>
 
     const batch = writeBatch(db);
 
-    // 삭제 대상
     existingIds.forEach((id) => {
       if (!newIds.has(id)) {
         batch.delete(doc(db, 'products', id));
       }
     });
 
-    // 추가 및 수정 대상
     products.forEach((prod) => {
       batch.set(doc(db, 'products', prod.id), prod);
     });
@@ -380,6 +470,9 @@ export async function fetchCloudSettings(): Promise<StoreSettings> {
       categories: Array.isArray(data.categories) && data.categories.length > 0
         ? data.categories
         : DEFAULT_SETTINGS.categories,
+      videoCategories: Array.isArray(data.videoCategories) && data.videoCategories.length > 0
+        ? data.videoCategories
+        : DEFAULT_SETTINGS.videoCategories,
       youtubeDisplayCategory: data.youtubeDisplayCategory !== undefined
         ? data.youtubeDisplayCategory
         : DEFAULT_SETTINGS.youtubeDisplayCategory,
@@ -410,23 +503,128 @@ export async function saveSettingsToCloud(settings: StoreSettings): Promise<void
 }
 
 /**
+ * 클라우드에서 영상 목록 로드
+ */
+export async function fetchCloudVideos(): Promise<VideoItem[]> {
+  try {
+    const colRef = collection(db, 'videos');
+    const snapshot = await getDocs(colRef);
+    if (snapshot.empty) {
+      const initial = loadVideos();
+      await syncAllVideosToCloud(initial);
+      return initial;
+    }
+
+    const fetched: VideoItem[] = [];
+    snapshot.forEach((docSnap) => {
+      fetched.push(docSnap.data() as VideoItem);
+    });
+
+    fetched.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    saveVideos(fetched);
+    return fetched;
+  } catch (err) {
+    console.warn('Firestore 영상 로드 실패, 로컬 캐시 사용:', err);
+    return loadVideos();
+  }
+}
+
+/**
+ * 단일 영상 저장/수정 (Firestore 클라우드 + 로컬 캐시)
+ */
+export async function saveVideoToCloud(video: VideoItem): Promise<void> {
+  try {
+    const docRef = doc(db, 'videos', video.id);
+    await setDoc(docRef, video);
+
+    const current = loadVideos();
+    const idx = current.findIndex((v) => v.id === video.id);
+    let updated: VideoItem[];
+    if (idx >= 0) {
+      updated = [...current];
+      updated[idx] = video;
+    } else {
+      updated = [...current, video];
+    }
+    saveVideos(updated);
+  } catch (err) {
+    console.error('Firestore 영상 저장 실패:', err);
+    throw err;
+  }
+}
+
+/**
+ * 단일 영상 삭제 (Firestore 클라우드 + 로컬 캐시)
+ */
+export async function deleteVideoFromCloud(videoId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'videos', videoId);
+    await deleteDoc(docRef);
+
+    const current = loadVideos();
+    const updated = current.filter((v) => v.id !== videoId);
+    saveVideos(updated);
+  } catch (err) {
+    console.error('Firestore 영상 삭제 실패:', err);
+    throw err;
+  }
+}
+
+/**
+ * 전체 영상 일괄 동기화 (배치 쓰기)
+ */
+export async function syncAllVideosToCloud(videos: VideoItem[]): Promise<void> {
+  try {
+    saveVideos(videos);
+
+    const colRef = collection(db, 'videos');
+    const existingSnap = await getDocs(colRef);
+    const existingIds = new Set(existingSnap.docs.map((d) => d.id));
+    const newIds = new Set(videos.map((v) => v.id));
+
+    const batch = writeBatch(db);
+
+    existingIds.forEach((id) => {
+      if (!newIds.has(id)) {
+        batch.delete(doc(db, 'videos', id));
+      }
+    });
+
+    videos.forEach((vid, index) => {
+      const itemWithOrder = { ...vid, order: vid.order ?? index + 1 };
+      batch.set(doc(db, 'videos', vid.id), itemWithOrder);
+    });
+
+    await batch.commit();
+  } catch (err) {
+    console.error('Firestore 전체 영상 동기화 실패:', err);
+    throw err;
+  }
+}
+
+/**
  * Firestore 실시간 리스너 구독 (방문자 & 관리자 화면 모두 실시간 자동 동기화)
  */
 export function subscribeToCloudData(
   onProductsUpdate: (products: Product[]) => void,
-  onSettingsUpdate: (settings: StoreSettings) => void
+  onSettingsUpdate: (settings: StoreSettings) => void,
+  onVideosUpdate?: (videos: VideoItem[]) => void
 ): () => void {
   const unsubProducts = onSnapshot(
     collection(db, 'products'),
     (snapshot) => {
-      if (!snapshot.empty) {
-        const list: Product[] = [];
-        snapshot.forEach((d) => {
-          list.push(d.data() as Product);
-        });
-        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const list: Product[] = [];
+      snapshot.forEach((d) => {
+        list.push(d.data() as Product);
+      });
+      list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      if (list.length > 0) {
         saveProducts(list);
         onProductsUpdate(list);
+      } else if (!snapshot.metadata.hasPendingWrites && snapshot.size === 0) {
+        // Firestore 컬렉션이 비어있는 경우
+        saveProducts([]);
+        onProductsUpdate([]);
       }
     },
     (err) => console.warn('Firestore 제품 실시간 감지 오류:', err)
@@ -443,6 +641,9 @@ export function subscribeToCloudData(
           categories: Array.isArray(data.categories) && data.categories.length > 0
             ? data.categories
             : DEFAULT_SETTINGS.categories,
+          videoCategories: Array.isArray(data.videoCategories) && data.videoCategories.length > 0
+            ? data.videoCategories
+            : DEFAULT_SETTINGS.videoCategories,
         };
         saveSettings(merged);
         onSettingsUpdate(merged);
@@ -451,14 +652,37 @@ export function subscribeToCloudData(
     (err) => console.warn('Firestore 설정 실시간 감지 오류:', err)
   );
 
+  let unsubVideos = () => {};
+  if (onVideosUpdate) {
+    unsubVideos = onSnapshot(
+      collection(db, 'videos'),
+      (snapshot) => {
+        const list: VideoItem[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as VideoItem);
+        });
+        list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+        if (list.length > 0) {
+          saveVideos(list);
+          onVideosUpdate(list);
+        } else if (!snapshot.metadata.hasPendingWrites && snapshot.size === 0) {
+          saveVideos([]);
+          onVideosUpdate([]);
+        }
+      },
+      (err) => console.warn('Firestore 영상 실시간 감지 오류:', err)
+    );
+  }
+
   return () => {
     unsubProducts();
     unsubSettings();
+    unsubVideos();
   };
 }
 
 // ==========================================
-// [관리자 비밀번호 & 세션 (보안을 위해 Firestore에 해시 저장 + 로컬 보조)]
+// [관리자 비밀번호 & 세션]
 // ==========================================
 
 export async function hashString(str: string): Promise<string> {
@@ -529,10 +753,11 @@ export function setAdminAuthenticated(authenticated: boolean): void {
 // 백업 데이터 JSON 파일로 내보내기
 export function exportBackupJson(): void {
   const backup = {
-    version: '1.0',
+    version: '2.0',
     exportDate: new Date().toISOString(),
     products: loadProducts(),
     settings: loadSettings(),
+    videos: loadVideos(),
   };
 
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -556,6 +781,9 @@ export function importBackupJson(jsonString: string): { success: boolean; messag
     syncAllProductsToCloud(data.products).catch(console.error);
     if (data.settings) {
       saveSettingsToCloud(data.settings).catch(console.error);
+    }
+    if (data.videos && Array.isArray(data.videos)) {
+      syncAllVideosToCloud(data.videos).catch(console.error);
     }
     return { success: true, message: '성공적으로 복원되었습니다!' };
   } catch {

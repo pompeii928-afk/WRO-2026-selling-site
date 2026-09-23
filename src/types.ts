@@ -41,7 +41,8 @@ export interface StoreSettings {
   adminEmail: string; // 결제 요청 메일을 받을 관리자 이메일
   youtubeChannelUrl: string; // 유튜브 채널 주소
   customLogoUrl?: string; // 사용자가 직접 업로드한 커스텀 로고
-  categories: string[]; // 사이트의 모든 카테고리 목록 (기본: ['WRO', 'CoSpace'])
+  categories: string[]; // 사이트의 모든 제품 카테고리 목록 (기본: ['WRO', 'CoSpace'])
+  videoCategories?: string[]; // 사이트의 모든 영상 카테고리 목록 (기본: ['WRO Senior', 'WRO Junior', 'CoSpace Rescue', 'Tutorial', 'Engineering'])
   youtubeDisplayCategory: string; // 유튜브 채널이 노출될 카테고리 ('ALL' 또는 특정 카테고리명)
   showHeroSection: boolean; // 히어로 배너 섹션 표시 여부 (기본 false)
   translations?: Partial<Record<LanguageCode, {
@@ -56,7 +57,8 @@ export interface VideoItem {
   id: string;
   title: string;
   youtubeId: string;
-  category: string;
+  category: string; // 영상 카테고리 (WRO Senior, CoSpace Rescue 등)
   thumbnailUrl: string;
   duration?: string;
+  order?: number;
 }

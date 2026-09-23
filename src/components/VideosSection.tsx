@@ -1,81 +1,71 @@
 /**
  * @file VideosSection.tsx
  * @description 유튜브 채널 연동 영상 섹션 및 전용 페이지
- * - 채널 최신 영상들을 썸네일 그리드로 보여주고, 클릭 시 사이트 내부 임베드 플레이어로 재생
- * - 유튜브 채널 구독 링크 및 바로가기 연동
+ * - 실시간 Firestore 동기화된 비디오 목록 렌더링
+ * - 영상 카테고리 필터링 탭 (ALL, WRO Senior, CoSpace Rescue 등)
+ * - 인라인 플레이어 및 유튜브 원본 링크
  */
 
-import React, { useState } from 'react';
-import { Youtube, Play, ExternalLink, X } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Youtube, Play, ExternalLink, Filter } from 'lucide-react';
 import { LanguageCode, StoreSettings, VideoItem } from '../types';
 import { translations } from '../locales/translations';
 import { getYoutubeEmbedUrl } from '../utils/youtube';
+import { DEFAULT_VIDEOS } from '../utils/storage';
 
 interface VideosSectionProps {
   currentLang: LanguageCode;
   settings: StoreSettings;
+  videos?: VideoItem[];
   isStandalonePage?: boolean;
 }
-
-// 기본 추천/대표 로봇 주행 및 튜토리얼 영상 목록
-export const DEFAULT_VIDEOS: VideoItem[] = [
-  {
-    id: 'vid-1',
-    title: 'WRO RoboMission Senior 2024 - 만점 주행 풀코스 데모 (Dual Color Sensor PID Run)',
-    youtubeId: 'S2fFv3y29O8',
-    category: 'WRO Senior',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
-    duration: '02:15',
-  },
-  {
-    id: 'vid-2',
-    title: 'WRO RoboMission Junior 2024 - 패시브 랙 앤 피니언 그리퍼 오브젝트 적재 테스트',
-    youtubeId: 'b0bA3YxZvxA',
-    category: 'WRO Junior',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1561557944-6e7860d1a7eb?auto=format&fit=crop&w=800&q=80',
-    duration: '01:45',
-  },
-  {
-    id: 'vid-3',
-    title: 'CoSpace Rescue Virtual Challenge - Dynamic A* 장애물 회피 시뮬레이션 데모',
-    youtubeId: 'kYJvYg_V408',
-    category: 'CoSpace Rescue',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
-    duration: '03:10',
-  },
-  {
-    id: 'vid-4',
-    title: 'LEGO Spike Prime 자이로 센서 누적 오차 보정(Gyro Drift) 및 라인트레이싱 튜토리얼',
-    youtubeId: 'YQHsXMglC9A',
-    category: 'Tutorial',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
-    duration: '05:32',
-  },
-  {
-    id: 'vid-5',
-    title: 'WRO 초고속 회전 모터 기어비 선정 및 토크 최적화 가이드',
-    youtubeId: 'dQw4w9WgXcQ',
-    category: 'Engineering',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    duration: '04:18',
-  },
-  {
-    id: 'vid-6',
-    title: 'CoSpace Rescue 색상 감지 센서 캘리브레이션과 텔레포트 존 감지 기법',
-    youtubeId: 'eVTXPUF4Oz4',
-    category: 'CoSpace Rescue',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80',
-    duration: '03:40',
-  },
-];
 
 export const VideosSection: React.FC<VideosSectionProps> = ({
   currentLang,
   settings,
+  videos = DEFAULT_VIDEOS,
   isStandalonePage = false,
 }) => {
-  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(DEFAULT_VIDEOS[0]);
-  const [isPlayingModal, setIsPlayingModal] = useState<boolean>(false);
+  const videoList = useMemo(() => {
+    return (videos && videos.length > 0) ? videos : DEFAULT_VIDEOS;
+  }, [videos]);
+
+  const [selectedVideoCategory, setSelectedVideoCategory] = useState<string>('ALL');
+  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(() => videoList[0] || null);
+
+  // 비디오 목록이 외부에서 변경되었을 때 활성 비디오 갱신
+  useEffect(() => {
+    if (activeVideo) {
+      const found = videoList.find((v) => v.id === activeVideo.id);
+      if (found) {
+        setActiveVideo(found);
+      } else if (videoList.length > 0) {
+        setActiveVideo(videoList[0]);
+      }
+    } else if (videoList.length > 0) {
+      setActiveVideo(videoList[0]);
+    }
+  }, [videoList]);
+
+  // 카테고리 목록 추출
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    if (settings.videoCategories && settings.videoCategories.length > 0) {
+      settings.videoCategories.forEach((c) => set.add(c));
+    }
+    videoList.forEach((v) => {
+      if (v.category) set.add(v.category);
+    });
+    return Array.from(set);
+  }, [settings.videoCategories, videoList]);
+
+  // 선택된 카테고리에 맞는 영상 필터링
+  const filteredVideos = useMemo(() => {
+    if (selectedVideoCategory === 'ALL') {
+      return videoList;
+    }
+    return videoList.filter((v) => v.category === selectedVideoCategory);
+  }, [videoList, selectedVideoCategory]);
 
   const t = translations[currentLang];
   const channelUrl = settings.youtubeChannelUrl || 'https://www.youtube.com/channel/UC_o1n4QCZyABlKCdxI7cFPA';
@@ -86,7 +76,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* 상단 섹션 헤더 */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#ffebee] text-[#cc0000] text-xs font-bold mb-3">
               <Youtube className="w-4 h-4" />
@@ -125,6 +115,42 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
           </div>
         </div>
 
+        {/* 영상 카테고리 필터 탭 */}
+        {availableCategories.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-8 no-scrollbar">
+            <div className="flex items-center gap-1 text-xs font-bold text-[#888882] mr-1 shrink-0">
+              <Filter className="w-3.5 h-3.5" />
+              <span>카테고리:</span>
+            </div>
+            <button
+              onClick={() => setSelectedVideoCategory('ALL')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                selectedVideoCategory === 'ALL'
+                  ? 'bg-[#1a1a18] text-white shadow-xs'
+                  : 'bg-white text-[#666660] hover:bg-[#ebebe6] border border-[#e0e0db]'
+              }`}
+            >
+              전체보기 ({videoList.length})
+            </button>
+            {availableCategories.map((cat) => {
+              const count = videoList.filter((v) => v.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedVideoCategory(cat)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    selectedVideoCategory === cat
+                      ? 'bg-[#D85A30] text-white shadow-xs'
+                      : 'bg-white text-[#666660] hover:bg-[#ebebe6] border border-[#e0e0db]'
+                  }`}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* 메인 비디오 플레이어 (인라인 재생) */}
         {activeVideo && (
           <div className="mb-12 bg-white rounded-2xl border border-[#ebebe6] overflow-hidden shadow-sm">
@@ -160,64 +186,69 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
         )}
 
         {/* 영상 그리드 목록 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {DEFAULT_VIDEOS.map((video) => {
-            const isSelected = activeVideo?.id === video.id;
-            return (
-              <div
-                key={video.id}
-                onClick={() => {
-                  setActiveVideo(video);
-                  // 모바일에서는 스크롤 이동
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    window.scrollTo({ top: 400, behavior: 'smooth' });
-                  }
-                }}
-                className={`flex flex-col bg-white rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer group ${
-                  isSelected ? 'border-[#D85A30] ring-2 ring-[#D85A30]/20 shadow-md' : 'border-[#ebebe6] hover:border-[#deded8] hover:shadow-xs'
-                }`}
-              >
-                {/* 썸네일 영역 */}
-                <div className="relative aspect-16/9 w-full bg-[#1a1a18] overflow-hidden">
-                  <img
-                    src={video.thumbnailUrl}
-                    alt={video.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-black/70 group-hover:bg-[#cc0000] text-white flex items-center justify-center transition-all shadow-md group-hover:scale-110">
-                      <Play className="w-5 h-5 fill-current ml-0.5" />
+        {filteredVideos.length === 0 ? (
+          <div className="p-12 text-center bg-white rounded-2xl border border-[#ebebe6]">
+            <p className="text-[#888882] text-sm">해당 카테고리에 등록된 영상이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredVideos.map((video) => {
+              const isSelected = activeVideo?.id === video.id;
+              return (
+                <div
+                  key={video.id}
+                  onClick={() => {
+                    setActiveVideo(video);
+                    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                      window.scrollTo({ top: 400, behavior: 'smooth' });
+                    }
+                  }}
+                  className={`flex flex-col bg-white rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer group ${
+                    isSelected ? 'border-[#D85A30] ring-2 ring-[#D85A30]/20 shadow-md' : 'border-[#ebebe6] hover:border-[#deded8] hover:shadow-xs'
+                  }`}
+                >
+                  {/* 썸네일 영역 */}
+                  <div className="relative aspect-16/9 w-full bg-[#1a1a18] overflow-hidden">
+                    <img
+                      src={video.thumbnailUrl}
+                      alt={video.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-black/70 group-hover:bg-[#cc0000] text-white flex items-center justify-center transition-all shadow-md group-hover:scale-110">
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      </div>
+                    </div>
+                    {video.duration && (
+                      <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 text-white text-xs font-mono">
+                        {video.duration}
+                      </div>
+                    )}
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-xs font-semibold">
+                      {video.category}
                     </div>
                   </div>
-                  {video.duration && (
-                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 text-white text-xs font-mono">
-                      {video.duration}
-                    </div>
-                  )}
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-xs font-semibold">
-                    {video.category}
-                  </div>
-                </div>
 
-                {/* 텍스트 정보 */}
-                <div className="p-4 flex flex-col flex-1 justify-between">
-                  <h4 className="text-sm font-bold text-[#1a1a18] line-clamp-2 leading-snug group-hover:text-[#D85A30] transition-colors mb-3">
-                    {video.title}
-                  </h4>
-                  <div className="flex items-center justify-between text-xs text-[#8e8e89] font-medium pt-2 border-t border-[#f4f4f0]">
-                    <span className="flex items-center gap-1 text-[#cc0000]">
-                      <Youtube className="w-3.5 h-3.5" />
-                      <span>YouTube</span>
-                    </span>
-                    <span className="text-[#D85A30] font-semibold group-hover:underline">
-                      {t.videos.watchNow} →
-                    </span>
+                  {/* 텍스트 정보 */}
+                  <div className="p-4 flex flex-col flex-1 justify-between">
+                    <h4 className="text-sm font-bold text-[#1a1a18] line-clamp-2 leading-snug group-hover:text-[#D85A30] transition-colors mb-3">
+                      {video.title}
+                    </h4>
+                    <div className="flex items-center justify-between text-xs text-[#8e8e89] font-medium pt-2 border-t border-[#f4f4f0]">
+                      <span className="flex items-center gap-1 text-[#cc0000]">
+                        <Youtube className="w-3.5 h-3.5" />
+                        <span>YouTube</span>
+                      </span>
+                      <span className="text-[#D85A30] font-semibold group-hover:underline">
+                        {t.videos.watchNow} →
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
       </div>
     </section>

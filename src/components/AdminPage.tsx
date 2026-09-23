@@ -38,7 +38,7 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
-import { LanguageCode, Product, StoreSettings, ProductCategory } from '../types';
+import { LanguageCode, Product, StoreSettings, ProductCategory, VideoItem } from '../types';
 import { 
   hasAdminPassword, 
   setAdminPassword, 
@@ -50,12 +50,16 @@ import {
   saveProducts, 
   loadSettings, 
   saveSettings,
+  loadVideos,
+  saveVideos,
   saveProductToCloud,
   deleteProductFromCloud,
   syncAllProductsToCloud,
   saveSettingsToCloud,
   fetchCloudProducts,
   fetchCloudSettings,
+  fetchCloudVideos,
+  subscribeToCloudData,
   exportBackupJson,
   importBackupJson,
   DEFAULT_PRODUCTS,
@@ -63,14 +67,25 @@ import {
 } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import { extractYoutubeId } from '../utils/youtube';
+import { VideoManagementSection } from './admin/VideoManagementSection';
 
 interface AdminPageProps {
   currentLang: LanguageCode;
   onExit: () => void;
   onDataChange?: () => void;
+  initialProducts?: Product[];
+  initialSettings?: StoreSettings;
+  initialVideos?: VideoItem[];
 }
 
-export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDataChange }) => {
+export const AdminPage: React.FC<AdminPageProps> = ({
+  currentLang,
+  onExit,
+  onDataChange,
+  initialProducts,
+  initialSettings,
+  initialVideos
+}) => {
   // 인증 상태
   const [isPasswordConfigured, setIsPasswordConfigured] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -82,11 +97,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
   const [authSuccess, setAuthSuccess] = useState('');
 
   // 탭 상태
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'settings' | 'backup' | 'languages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'videos' | 'settings' | 'backup' | 'languages'>('products');
 
   // 데이터 상태
-  const [products, setProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+  const [products, setProducts] = useState<Product[]>(() => initialProducts || loadProducts());
+  const [settings, setSettings] = useState<StoreSettings>(() => initialSettings || loadSettings());
+  const [videos, setVideos] = useState<VideoItem[]>(() => initialVideos || loadVideos());
 
   // 카테고리 관리 상태
   const [newCategoryInput, setNewCategoryInput] = useState('');
@@ -133,6 +149,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
     // 기본 로컬 캐시 즉시 렌더링
     setProducts(loadProducts());
     setSettings(loadSettings());
+    setVideos(loadVideos());
 
     // 클라우드에서 최신 데이터 가져와서 동기화
     fetchCloudProducts().then((cloudList) => {
@@ -145,6 +162,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
         setSettings(cloudSet);
       }
     });
+    fetchCloudVideos().then((cloudVids) => {
+      if (cloudVids && cloudVids.length > 0) {
+        setVideos(cloudVids);
+      }
+    });
+
+    // Firestore 실시간 리스너 구독 (다른 탭이나 다른 사용자가 변경 시 관리자 화면도 즉시 실시간 동기화)
+    const unsubscribe = subscribeToCloudData(
+      (updatedProds) => setProducts(updatedProds),
+      (updatedSet) => setSettings(updatedSet),
+      (updatedVids) => setVideos(updatedVids)
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // 피드백 알림 타이머
@@ -312,7 +345,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
   };
 
   // 제품 저장 처리 (추가 또는 수정)
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
       alert('제품명을 입력해주세요.');
@@ -389,41 +422,53 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
 
     setProducts(updatedList);
     saveProducts(updatedList);
-    // Firestore 클라우드 영구 저장 (모든 사용자에게 즉시 공유)
-    saveProductToCloud(targetProd).catch((err) => {
-      console.error('클라우드 제품 동기화 오류:', err);
-    });
-
     setIsEditingProduct(false);
     onDataChange?.();
+
+    // Firestore 클라우드 영구 저장 (모든 사용자에게 즉시 공유)
+    try {
+      await saveProductToCloud(targetProd);
+      showFeedback('Firebase 클라우드에 성공적으로 저장 및 전세계 실시간 반영되었습니다!');
+    } catch (err) {
+      console.error('클라우드 제품 동기화 오류:', err);
+      alert('Firebase 클라우드 저장 중 오류가 발생했습니다: ' + err);
+    }
   };
 
   // 제품 삭제 처리 ("정말 삭제하시겠습니까?" 확인창)
-  const handleDeleteProduct = (productId: string, productName: string) => {
+  const handleDeleteProduct = async (productId: string, productName: string) => {
     const ok = window.confirm(`[확인] "${productName}" 제품을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`);
     if (ok) {
       const filtered = products.filter((p) => p.id !== productId);
       setProducts(filtered);
       saveProducts(filtered);
-      // Firestore 클라우드에서 영구 삭제
-      deleteProductFromCloud(productId).catch((err) => {
-        console.error('클라우드 제품 삭제 오류:', err);
-      });
-      showFeedback('제품이 삭제되었습니다.');
       onDataChange?.();
+
+      // Firestore 클라우드에서 영구 삭제
+      try {
+        await deleteProductFromCloud(productId);
+        showFeedback(`"${productName}" 제품이 삭제되어 모든 화면에서 즉시 제거되었습니다.`);
+      } catch (err) {
+        console.error('클라우드 제품 삭제 오류:', err);
+        alert('Firebase 클라우드 제품 삭제 중 오류가 발생했습니다: ' + err);
+      }
     }
   };
 
   // 사이트 전역 설정 저장
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     saveSettings(settings);
-    // Firestore 클라우드에 영구 저장
-    saveSettingsToCloud(settings).catch((err) => {
-      console.error('클라우드 설정 저장 오류:', err);
-    });
-    showFeedback('사이트 설정이 성공적으로 저장되었습니다.');
     onDataChange?.();
+
+    // Firestore 클라우드에 영구 저장
+    try {
+      await saveSettingsToCloud(settings);
+      showFeedback('사이트 설정이 Firebase 클라우드에 성공적으로 저장 및 즉시 반영되었습니다!');
+    } catch (err) {
+      console.error('클라우드 설정 저장 오류:', err);
+      alert('Firebase 클라우드 설정 저장 중 오류가 발생했습니다: ' + err);
+    }
   };
 
   // ==========================================
@@ -875,6 +920,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
           >
             <FolderKanban className="w-4 h-4" />
             <span>카테고리 관리 ({(settings.categories || ['WRO', 'CoSpace']).length})</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('videos'); setIsEditingProduct(false); }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
+              activeTab === 'videos' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
+            }`}
+          >
+            <Youtube className="w-4 h-4 text-[#cc0000]" />
+            <span>유튜브 영상 &amp; 카테고리 관리 ({videos.length})</span>
           </button>
 
           <button
@@ -1542,7 +1597,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentLang, onExit, onDat
         )}
 
         {/* ==================================================== */}
-        {/* [탭 3] 사이트 설정 탭 */}
+        {/* [탭 3] 유튜브 영상 & 카테고리 관리 탭 */}
+        {/* ==================================================== */}
+        {activeTab === 'videos' && (
+          <VideoManagementSection
+            videos={videos}
+            settings={settings}
+            onVideosChange={(updatedVids) => {
+              setVideos(updatedVids);
+              onDataChange?.();
+            }}
+            onSettingsChange={(updatedSet) => {
+              setSettings(updatedSet);
+              onDataChange?.();
+            }}
+            showFeedback={showFeedback}
+          />
+        )}
+
+        {/* ==================================================== */}
+        {/* [탭 4] 사이트 설정 탭 */}
         {/* ==================================================== */}
         {activeTab === 'settings' && (
           <div className="bg-white rounded-2xl border border-[#ebebe6] p-6 sm:p-8 shadow-sm max-w-3xl">

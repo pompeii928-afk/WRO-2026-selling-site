@@ -1,16 +1,65 @@
 {
-  "rules": {
-    "products": {
-      "$productId": {
-        "read": true,
-        "write": true
-      }
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Robo Store Product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "description": { "type": "string" },
+        "includedItems": { "type": "array" },
+        "images": { "type": "array" },
+        "youtubeUrl": { "type": "string" },
+        "translations": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "price"]
     },
-    "settings": {
-      "global": {
-        "read": true,
-        "write": true
-      }
+    "StoreSettings": {
+      "title": "StoreSettings",
+      "description": "Global Store Settings",
+      "type": "object",
+      "properties": {
+        "adminEmail": { "type": "string" },
+        "youtubeChannelUrl": { "type": "string" },
+        "categories": { "type": "array" },
+        "youtubeDisplayCategory": { "type": "string" },
+        "showHeroSection": { "type": "boolean" }
+      },
+      "required": ["adminEmail"]
+    },
+    "VideoItem": {
+      "title": "VideoItem",
+      "description": "YouTube Video in Store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "youtubeId": { "type": "string" },
+        "category": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "duration": { "type": "string" }
+      },
+      "required": ["id", "title", "youtubeId", "category"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Products available in the store"
+    },
+    "/settings/{settingId}": {
+      "schema": "StoreSettings",
+      "description": "Global settings and configuration"
+    },
+    "/videos/{videoId}": {
+      "schema": "VideoItem",
+      "description": "YouTube videos displayed in the video section"
     }
   }
 }
