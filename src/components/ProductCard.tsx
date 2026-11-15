@@ -10,6 +10,7 @@ import { LanguageCode, Product } from '../types';
 import { translations } from '../locales/translations';
 import { ui, localeFor } from '../locales/ui';
 import { productText, heroText, videoTitle, categoryText } from '../locales/content';
+import { ProductPrice } from './Currency';
 
 interface ProductCardProps {
   product: Product;
@@ -94,9 +95,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
             <span className="text-xs text-[#8e8e89] block font-medium">
               {t.products.priceLabel}
             </span>
-            <span className="text-lg font-extrabold text-[#1a1a18]">
-              {formattedPrice}
-            </span>
+            <ProductPrice amount={product.price} currency={product.currency} language={currentLang}/>
           </div>
 
           <button

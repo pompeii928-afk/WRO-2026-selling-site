@@ -27,6 +27,7 @@ import { productText, heroText, videoTitle, categoryText } from '../locales/cont
 import { getYoutubeEmbedUrl } from '../utils/youtube';
 import { normalizeCheckoutUrl } from '../utils/checkout';
 import { CheckoutPanel } from './CheckoutPanel';
+import { ProductPrice } from './Currency';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -267,7 +268,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </h2>
             <div className="flex flex-wrap items-baseline gap-2">
               <span className="text-sm font-semibold text-[#8e8e89]">{t.products.priceLabel}:</span>
-              <span className="text-3xl font-black text-[#D85A30] tracking-tight">{formattedPrice}</span>
+              <ProductPrice amount={product.price} currency={product.currency} language={currentLang} detail/>
             </div>
           </div>
 
@@ -311,6 +312,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {youtubeEmbedUrl ? (
               <div className="relative aspect-16/9 w-full rounded-xl overflow-hidden bg-black shadow-md border border-[#ebebe6]">
                 <iframe
+                  referrerPolicy="strict-origin-when-cross-origin"
                   src={`${youtubeEmbedUrl}&hl=${currentLang}`}
                   title={t.products.drivingVideo}
                   className="w-full h-full"

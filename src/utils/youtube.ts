@@ -19,11 +19,11 @@ export function extractYoutubeId(url?: string): string | null {
 /**
  * 비디오 ID 또는 URL로부터 반응형 임베드 iframe src URL을 생성합니다.
  */
-export function getYoutubeEmbedUrl(urlOrId?: string): string | null {
+export function getYoutubeEmbedUrl(urlOrId?: string, autoplay = false): string | null {
   if (!urlOrId) return null;
   const id = urlOrId.length === 11 ? urlOrId : extractYoutubeId(urlOrId);
   if (!id) return null;
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&autoplay=0`;
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&autoplay=${autoplay ? 1 : 0}`;
 }
 
 /**

@@ -34,6 +34,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
 
   const [selectedVideoCategory, setSelectedVideoCategory] = useState<string>('ALL');
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(() => videoList[0] || null);
+  const [playRequest, setPlayRequest] = useState<{id: string; sequence: number} | null>(null);
 
   // 비디오 목록이 외부에서 변경되었을 때 활성 비디오 갱신
   useEffect(() => {
@@ -74,6 +75,14 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
   }, [filteredVideos, activeVideo?.id]);
 
   const playerRef = useRef<HTMLDivElement>(null);
+  const playerId = `video-player-${isStandalonePage ? 'page' : 'home'}`;
+  const playVideo = (video: VideoItem) => {
+    setActiveVideo(video);
+    setPlayRequest(previous => ({id: video.id, sequence: (previous?.sequence || 0) + 1}));
+    requestAnimationFrame(() => playerRef.current?.scrollIntoView({
+      block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    }));
+  };
   const t = translations[currentLang];
   const channelUrl = settings.youtubeChannelUrl || 'https://www.youtube.com/channel/UC_o1n4QCZyABlKCdxI7cFPA';
   const subscribeUrl = channelUrl.includes('?') ? `${channelUrl}&sub_confirmation=1` : `${channelUrl}?sub_confirmation=1`;
@@ -131,7 +140,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
             </div>
             <button
               aria-pressed={selectedVideoCategory === 'ALL'}
-              onClick={() => setSelectedVideoCategory('ALL')}
+              onClick={() => { setSelectedVideoCategory('ALL'); setPlayRequest(null); }}
               className={`min-h-11 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedVideoCategory === 'ALL'
                   ? 'bg-[#1a1a18] text-white shadow-xs'
@@ -146,7 +155,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                 <button
                   key={cat}
                   aria-pressed={selectedVideoCategory === cat}
-                  onClick={() => setSelectedVideoCategory(cat)}
+                  onClick={() => { setSelectedVideoCategory(cat); setPlayRequest(null); }}
                   className={`min-h-11 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     selectedVideoCategory === cat
                       ? 'bg-[#D85A30] text-white shadow-xs'
@@ -162,11 +171,13 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
 
         {/* 메인 비디오 플레이어 (인라인 재생) */}
         {activeVideo && (
-          <div ref={playerRef} className="scroll-mt-20 mb-12 bg-white rounded-2xl border border-[#ebebe6] overflow-hidden shadow-sm">
+          <div id={playerId} ref={playerRef} className="scroll-mt-24 mb-12 bg-white rounded-2xl border border-[#ebebe6] overflow-hidden shadow-sm">
             <div className="relative aspect-16/9 w-full bg-black">
               <iframe
-                src={`${getYoutubeEmbedUrl(activeVideo.youtubeId) || ''}&hl=${currentLang}`}
+                key={`${activeVideo.id}-${playRequest?.sequence || 0}`}
+                src={`${getYoutubeEmbedUrl(activeVideo.youtubeId, playRequest?.id === activeVideo.id) || ''}&hl=${currentLang}&playsinline=1`}
                 title={videoTitle(activeVideo,currentLang)}
+                referrerPolicy="strict-origin-when-cross-origin"
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -204,15 +215,14 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
             {filteredVideos.map((video) => {
               const isSelected = activeVideo?.id === video.id;
               return (
-                <div
+                <button
+                  type="button"
                   key={video.id}
-                  onClick={() => {
-                    setActiveVideo(video);
-                    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                      playerRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-                    }
-                  }}
-                  className={`flex flex-col bg-white rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer group ${
+                  onClick={() => playVideo(video)}
+                  aria-label={`${t.videos.watchNow}: ${videoTitle(video,currentLang)}`}
+                  aria-controls={playerId}
+                  data-video-play={video.id}
+                  className={`text-left flex flex-col bg-white rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer group ${
                     isSelected ? 'border-[#D85A30] ring-2 ring-[#D85A30]/20 shadow-md' : 'border-[#ebebe6] hover:border-[#deded8] hover:shadow-xs'
                   }`}
                 >
@@ -253,7 +263,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                       </span>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

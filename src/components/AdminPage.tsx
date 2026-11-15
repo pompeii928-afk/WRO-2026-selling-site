@@ -70,6 +70,7 @@ import { extractYoutubeId } from '../utils/youtube';
 import { ProductImageEditor } from './admin/ProductImageEditor';
 import { normalizeCheckoutUrl } from '../utils/checkout';
 import { VideoManagementSection } from './admin/VideoManagementSection';
+import { AdminAccessFrame, AdminLayout, AdminTab } from './admin/AdminLayout';
 
 interface AdminPageProps {
   currentLang: LanguageCode;
@@ -99,7 +100,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [authSuccess, setAuthSuccess] = useState('');
 
   // 탭 상태
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'videos' | 'settings' | 'backup' | 'languages'>('products');
+  const [activeTab, setActiveTab] = useState<AdminTab>('products');
 
   // 데이터 상태
   const [products, setProducts] = useState<Product[]>(() => initialProducts || loadProducts());
@@ -688,8 +689,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // ==========================================
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#1a1a18] text-white flex flex-col justify-center items-center px-4 py-12">
-        <div className="w-full max-w-md bg-[#232321] border border-[#383834] rounded-2xl p-8 shadow-2xl">
+      <AdminAccessFrame onExit={onExit}>
+        <div className="admin-login-panel">
           
           <div className="text-center mb-8">
             <div className="inline-flex p-3 rounded-2xl bg-[#2e2e2a] text-[#D85A30] mb-4">
@@ -804,7 +805,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </div>
 
         </div>
-      </div>
+      </AdminAccessFrame>
     );
   }
 
@@ -812,116 +813,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // [B] 인증 완료된 관리자 콘솔 대시보드
   // ==========================================
   return (
-    <div className="min-h-screen bg-[#f7f7f5] text-[#1a1a18]">
-      
-      {/* 관리자 헤더 */}
-      <header className="sticky top-0 z-30 bg-[#1a1a18] text-white border-b border-[#2d2d2a] px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onExit}
-            className="p-1.5 rounded-lg bg-[#2b2b28] hover:bg-[#383834] text-[#d0d0cc] transition-colors"
-            title="스토어로 이동"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <h1 className="text-base sm:text-lg font-bold flex items-center gap-2">
-            <span className="text-[#D85A30]">ROBO STORE</span>
-            <span className="text-xs text-[#a3a39e] font-normal px-2 py-0.5 rounded-md bg-[#282825]">관리자 센터</span>
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onExit}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#282825] hover:bg-[#333330] text-xs font-medium text-white transition-colors"
-          >
-            스토어 바로가기
-          </button>
-          <button
-            onClick={handleLogout}
-            id="admin-logout-btn"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-800/60 border border-red-800 text-xs font-semibold text-red-200 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>로그아웃</span>
-          </button>
-        </div>
-      </header>
-
-      {/* 피드백 토스트 알림 */}
-      {feedbackNotice && (
-        <div className="fixed top-16 right-4 z-50 p-4 rounded-xl bg-[#1a1a18] text-white text-xs font-semibold shadow-xl border border-[#3e3e3a] flex items-center gap-2 animate-fadeIn">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{feedbackNotice}</span>
-        </div>
-      )}
-
-      {/* 메인 관리 영역 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* 상단 탭 네비게이션 */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#e2e2dc] pb-4 mb-8">
-          <button
-            onClick={() => { setActiveTab('products'); setIsEditingProduct(false); }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-              activeTab === 'products' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>제품 관리 ({products.length})</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('categories'); setIsEditingProduct(false); }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-              activeTab === 'categories' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
-            }`}
-          >
-            <FolderKanban className="w-4 h-4" />
-            <span>카테고리 관리 ({(settings.categories || ['WRO', 'CoSpace']).length})</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('videos'); setIsEditingProduct(false); }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-              activeTab === 'videos' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
-            }`}
-          >
-            <Youtube className="w-4 h-4 text-[#cc0000]" />
-            <span>유튜브 영상 &amp; 카테고리 관리 ({videos.length})</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('settings'); setIsEditingProduct(false); }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-              activeTab === 'settings' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>사이트 설정</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('backup'); setIsEditingProduct(false); }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-              activeTab === 'backup' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
-            }`}
-          >
-            <Download className="w-4 h-4" />
-            <span>데이터 백업 &amp; 복원</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('languages'); setIsEditingProduct(false); }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-              activeTab === 'languages' ? 'bg-[#1a1a18] text-white shadow-xs' : 'bg-white text-[#666660] hover:bg-[#ebebe6]'
-            }`}
-          >
-            <Languages className="w-4 h-4" />
-            <span>언어 및 운영 가이드</span>
-          </button>
-        </div>
-
+    <AdminLayout activeTab={activeTab}
+      onTabChange={(tab) => { setActiveTab(tab); setIsEditingProduct(false); window.scrollTo({top: 0, behavior: 'auto'}); }}
+      onExit={onExit} onLogout={handleLogout}
+      productCount={products.length} videoCount={videos.length}
+      categoryCount={(settings.categories || ['WRO', 'CoSpace']).length}
+      notice={feedbackNotice}>
         {/* ==================================================== */}
         {/* [탭 1] 제품 관리 탭 */}
         {/* ==================================================== */}
@@ -947,11 +844,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="admin-product-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {products.map((prod) => (
                     <div
                       key={prod.id}
-                      className="bg-white rounded-xl border border-[#ebebe6] overflow-hidden shadow-xs flex flex-col justify-between"
+                      className="admin-product-card bg-white rounded-xl border border-[#ebebe6] overflow-hidden shadow-xs flex flex-col justify-between"
                     >
                       <div>
                         {/* 썸네일 */}
@@ -1804,7 +1701,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </div>
         )}
 
-      </main>
-    </div>
+    </AdminLayout>
   );
 };

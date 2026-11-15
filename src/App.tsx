@@ -24,6 +24,7 @@ import {
 } from './utils/storage';
 import { ui } from './locales/ui';
 import { boutique } from './locales/boutique';
+import { CurrencyProvider } from './components/Currency';
 import { Header, ActiveSection } from './components/Header';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
@@ -250,6 +251,7 @@ export default function App() {
   }
 
   return (
+    <CurrencyProvider language={currentLang}>
     <div className="storefront min-h-screen flex flex-col bg-white text-[#1a1a18]">
       
       {/* 상단 고정 헤더 (#1a1a18 어두운 배경 + 좌측 흰색 로고 + 우측 메뉴 + 언어 드롭다운) */}
@@ -401,5 +403,6 @@ export default function App() {
       )}
 
     </div>
+    </CurrencyProvider>
   );
 }

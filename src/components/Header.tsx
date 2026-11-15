@@ -3,6 +3,7 @@ import { Globe, Youtube, Menu, X, ChevronDown } from 'lucide-react';
 import { LanguageCode } from '../types';
 import { LANGUAGES, translations } from '../locales/translations';
 import { ui } from '../locales/ui';
+import { CurrencySelector } from './Currency';
 export type ActiveSection = 'home' | 'products' | 'videos' | 'contact';
 interface HeaderProps {
   currentLang: LanguageCode;
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({currentLang,onLanguageChange,acti
       <button onClick={()=>navigate('home')} className="header-brand min-w-0 py-1" aria-label={t.nav.home}><img src={customLogoUrl||'/logo.svg'} alt={u.logo} className="h-9 lg:h-10 max-w-[min(30vw,140px)] w-auto object-contain"/><span aria-hidden="true" className="header-wordmark">K.F.C.<small>ROBOTICS</small></span></button>
       <nav aria-label={u.navigation} className="hidden lg:flex items-center gap-1">{links()}</nav>
       <div className="hidden lg:flex items-center gap-3">
+        <CurrencySelector language={currentLang}/>
         <a href={subscribeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#cc0000] hover:bg-[#b00000]"><Youtube className="w-4 h-4"/><span>{t.nav.subscribe}</span></a>
         <div className="relative" ref={dropdownRef}>
           <button id="language-selector-btn" aria-label={u.language} aria-expanded={langOpen} aria-controls="language-options" onClick={()=>setLangOpen(!langOpen)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#282825] hover:bg-[#333330] text-sm border border-[#383834]"><Globe className="w-4 h-4"/><span lang={language.code}>{language.flag} {language.name}</span><ChevronDown className="w-3.5 h-3.5"/></button>
@@ -56,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({currentLang,onLanguageChange,acti
     {mobileOpen&&<div id="mobile-navigation" className="lg:hidden absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain bg-[#1f1f1d] border-b border-[#2d2d2a] shadow-xl px-4 pt-3 pb-5 space-y-3">
       <nav aria-label={u.navigation} className="grid grid-cols-2 gap-2">{links()}</nav>
       <div className="pt-2 border-t border-[#2d2d2a]"><p className="text-xs text-[#a3a39e] mb-2">{u.language}</p><div className="grid grid-cols-2 gap-1.5">{LANGUAGES.map(l=><button key={l.code} lang={l.code} aria-pressed={currentLang===l.code} onClick={()=>onLanguageChange(l.code)} className={`px-3 py-2 rounded-lg text-xs text-left ${currentLang===l.code?'bg-[#D85A30]':'bg-[#282825] text-[#d0d0cc]'}`}>{l.flag} {l.name}</button>)}</div></div>
+      <CurrencySelector language={currentLang}/>
       <a href={subscribeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs bg-[#cc0000]"><Youtube className="w-4 h-4"/>{t.nav.subscribe}</a>
     </div>}
   </header>;
