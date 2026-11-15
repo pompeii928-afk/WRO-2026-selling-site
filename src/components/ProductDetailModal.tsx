@@ -25,6 +25,8 @@ import { translations } from '../locales/translations';
 import { ui, localeFor } from '../locales/ui';
 import { productText, heroText, videoTitle, categoryText } from '../locales/content';
 import { getYoutubeEmbedUrl } from '../utils/youtube';
+import { normalizeCheckoutUrl } from '../utils/checkout';
+import { CheckoutPanel } from './CheckoutPanel';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -46,6 +48,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   const t = translations[currentLang];
+  const checkoutUrl = normalizeCheckoutUrl(product.checkoutUrl);
   const {name: displayName, description: displayDesc, includedItems: displayIncluded} = productText(product, currentLang);
 
   const images = product.images && product.images.length > 0 
@@ -289,6 +292,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
         {/* [5. 결제 요청 (메일 자동 작성 방식)] 고정 하단 바 */}
+        {checkoutUrl ? <CheckoutPanel checkoutUrl={checkoutUrl} currentLang={currentLang}/> : (
         <div className="p-5 border-t border-[#ebebe6] bg-[#fbfbfa] flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-20">
           <div className="text-left w-full sm:w-auto">
             <p className="text-xs text-[#73736c] mb-0.5">{t.emailTemplate.instruction}</p>
@@ -321,7 +325,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </button>
           </div>
         </div>
-
+        )}
       </div>
     </div>
   );

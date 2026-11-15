@@ -29,6 +29,7 @@ export interface Product {
   includedItems: string[]; // 포함된 항목 목록 (예: PDF 조립도, 파이썬 코드 등)
   images: string[]; // 제품 사진 URL/Base64 배열 (첫 번째 이미지가 대표 썸네일)
   youtubeUrl?: string; // 이 로봇의 주행 영상 유튜브 링크
+  checkoutUrl?: string; // Lemon Squeezy 상품 Share의 공개 결제 링크 (비밀 키가 아님)
   translations?: Partial<Record<LanguageCode, ProductTranslation>>; // 다국어 번역 데이터
   createdAt: string;
 }

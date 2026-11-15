@@ -68,6 +68,7 @@ import {
 import { compressImage } from '../utils/imageCompressor';
 import { extractYoutubeId } from '../utils/youtube';
 import { ProductImageEditor } from './admin/ProductImageEditor';
+import { normalizeCheckoutUrl } from '../utils/checkout';
 import { VideoManagementSection } from './admin/VideoManagementSection';
 
 interface AdminPageProps {
@@ -126,6 +127,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [formDesc, setFormDesc] = useState('');
   const [formIncludedText, setFormIncludedText] = useState('');
   const [formYoutubeUrl, setFormYoutubeUrl] = useState('');
+  const [formCheckoutUrl, setFormCheckoutUrl] = useState('');
   const [formImages, setFormImages] = useState<string[]>([]);
 
   // 다국어 번역 폼 탭 및 데이터
@@ -246,6 +248,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setFormDesc('');
     setFormIncludedText('고해상도 3D 조립 설명서 (PDF)\nLEGO Spike Prime / EV3 원본 소스코드\n센서 보정 및 경기장 튜닝 가이드');
     setFormYoutubeUrl('');
+    setFormCheckoutUrl('');
     setFormImages([]);
     setTransName({});
     setTransShortDesc({});
@@ -265,6 +268,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setFormDesc(prod.description);
     setFormIncludedText((prod.includedItems || []).join('\n'));
     setFormYoutubeUrl(prod.youtubeUrl || '');
+    setFormCheckoutUrl(prod.checkoutUrl || '');
     setFormImages(prod.images || []);
 
     // 번역 데이터 로드
@@ -295,6 +299,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (savingProduct || compressingPhotos) return;
+    const checkoutUrl = normalizeCheckoutUrl(formCheckoutUrl);
+    if (formCheckoutUrl.trim() && !checkoutUrl) {
+      alert('Lemon Squeezy 실판매 모드에서 상품의 Share → Checkout link를 복사해주세요. /checkout/buy/ 형태의 HTTPS 링크가 필요합니다. 장바구니 링크와 테스트 결제 링크는 사용할 수 없습니다.');
+      return;
+    }
     if (!formName.trim()) {
       alert('제품명을 입력해주세요.');
       return;
@@ -342,6 +351,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         includedItems,
         images: formImages,
         youtubeUrl: formYoutubeUrl,
+        checkoutUrl: checkoutUrl || '',
         translations: translationsData,
       };
       updatedList = products.map((p) => (p.id === editingProductId ? targetProd : p));
@@ -360,6 +370,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
         ],
         youtubeUrl: formYoutubeUrl,
+        checkoutUrl: checkoutUrl || '',
         translations: translationsData,
         createdAt: new Date().toISOString().slice(0, 10),
       };
@@ -1140,6 +1151,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         ✓ 유튜브 비디오 ID 감지됨: {extractYoutubeId(formYoutubeUrl)}
                       </p>
                     )}
+                  </div>
+
+                  <div className="rounded-xl border border-[#e2d8f3] bg-[#f9f6ff] p-4 space-y-2">
+                    <label htmlFor="product-checkout-url" className="block text-sm font-bold">Lemon Squeezy 결제 링크</label>
+                    <p className="text-xs text-[#666660] leading-relaxed">
+                      승인된 상점의 실판매 모드에서 상품에 설명서·코드 파일을 등록한 뒤 Share의 Checkout link를 붙여넣으세요. 링크를 저장하면 구매 버튼이 Lemon Squeezy 결제로 연결됩니다.
+                    </p>
+                    <input id="product-checkout-url" type="url" value={formCheckoutUrl}
+                      onChange={event=>setFormCheckoutUrl(event.target.value)}
+                      placeholder="https://your-store.lemonsqueezy.com/checkout/buy/..."
+                      className="w-full px-3 py-2.5 rounded-lg border border-[#deded8] bg-white text-xs"/>
+                    <p className="text-xs text-[#777770]">비워두면 기존 이메일 구매 요청 방식이 유지됩니다. API 키는 입력하지 마세요. 실제 청구 금액은 Lemon Squeezy 상품 가격이므로 사이트 가격·통화와 맞춰주세요.</p>
                   </div>
 
                   <ProductImageEditor images={formImages} onChange={setFormImages}
