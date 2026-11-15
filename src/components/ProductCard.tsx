@@ -15,9 +15,10 @@ interface ProductCardProps {
   product: Product;
   currentLang: LanguageCode;
   onSelect: (product: Product) => void;
+  featured?: boolean;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, onSelect }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, onSelect, featured = false }) => {
   const t = translations[currentLang];
 
   // 다국어 번역 가져오기 (없으면 한국어 기본값 사용)
@@ -37,24 +38,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
 
   return (
     <div 
-      className="min-w-0 flex flex-col bg-white rounded-xl border border-[#ebebe6] overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
+      className={`boutique-product ${featured ? 'boutique-product-featured' : ''} min-w-0 group`}
       id={`product-card-${product.id}`}
     >
       {/* 썸네일 사진 영역 */}
-      <div 
-        className="relative aspect-16/10 w-full bg-[#f4f4f0] overflow-hidden cursor-pointer"
+      <button
+        type="button"
+        aria-label={displayName}
+        className="product-artwork relative aspect-16/10 w-full bg-[#f4f4f0] overflow-hidden cursor-pointer"
         onClick={() => onSelect(product)}
       >
         <img
           src={thumbnail}
           alt={displayName}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
+          className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-103"
           loading="lazy"
         />
 
         {/* 카테고리 뱃지 */}
         <div className="absolute top-3 left-3">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide shadow-xs ${
+          <span className={`product-badge inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium tracking-wide ${
             product.category === 'WRO'
               ? 'bg-[#1a1a18] text-white'
               : 'bg-[#D85A30] text-white'
@@ -70,23 +73,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
             <Play className="w-3.5 h-3.5 fill-current" />
           </div>
         )}
-      </div>
+      </button>
 
       {/* 카드 텍스트 콘텐츠 */}
-      <div className="flex flex-col flex-1 p-5">
+      <div className="product-copy flex flex-col flex-1">
+        <p className="product-category">{categoryText(product.category,currentLang)}</p>
         <h3 
-          onClick={() => onSelect(product)}
-          className="text-lg font-bold text-[#1a1a18] line-clamp-2 leading-snug mb-2 cursor-pointer hover:text-[#D85A30] transition-colors"
+          className="product-title text-lg font-bold text-[#1a1a18] leading-snug mb-2 wrap-anywhere"
         >
-          {displayName}
+          <button className="text-left" onClick={() => onSelect(product)}>{displayName}</button>
         </h3>
 
-        <p className="text-sm text-[#666660] line-clamp-2 leading-relaxed mb-5 flex-1">
+        <p className="product-description text-sm text-[#666660] leading-relaxed mb-5 flex-1">
           {displayShortDesc}
         </p>
 
         {/* 하단 가격 & 상세보기 버튼 */}
-        <div className="pt-4 border-t border-[#f0f0eb] flex flex-wrap items-center justify-between gap-3">
+        <div className="product-purchase pt-4 border-t border-[#f0f0eb] flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-xs text-[#8e8e89] block font-medium">
               {t.products.priceLabel}
@@ -98,7 +101,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
 
           <button
             onClick={() => onSelect(product)}
-            className="min-h-11 inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-[#f4f4f0] hover:bg-[#D85A30] text-[#1a1a18] hover:text-white text-sm font-semibold transition-all cursor-pointer"
+            className="product-detail-button min-h-11 inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-semibold transition-all cursor-pointer"
           >
             <span>{t.products.viewDetails}</span>
             <ChevronRight className="w-4 h-4" />

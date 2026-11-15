@@ -23,6 +23,7 @@ import {
   fetchCloudVideos 
 } from './utils/storage';
 import { ui } from './locales/ui';
+import { boutique } from './locales/boutique';
 import { Header, ActiveSection } from './components/Header';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
@@ -249,7 +250,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-[#1a1a18]">
+    <div className="storefront min-h-screen flex flex-col bg-white text-[#1a1a18]">
       
       {/* 상단 고정 헤더 (#1a1a18 어두운 배경 + 좌측 흰색 로고 + 우측 메뉴 + 언어 드롭다운) */}
       <Header
@@ -272,8 +273,9 @@ export default function App() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
               {/* 섹션 제목 및 카테고리 탭 */}
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-5 sm:gap-6">
+              <div className="collection-heading flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-5 sm:gap-6">
                 <div>
+                  <p className="boutique-eyebrow mb-4"><span className="copper-rule"/>{boutique[currentLang].collection}</p>
                   <h2 className="text-2xl sm:text-4xl font-extrabold text-[#1a1a18] tracking-tight">
                     {t.products.title}
                   </h2>
@@ -328,11 +330,12 @@ export default function App() {
 
               {/* 제품 그리드: 데스크탑 3열, 태블릿 2열, 모바일 1열 */}
               {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
+                <div className={filteredProducts.length === 1 ? 'product-collection-single' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10'}>
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
+                      featured={filteredProducts.length === 1}
                       currentLang={currentLang}
                       onSelect={(prod) => setSelectedProduct(prod)}
                     />

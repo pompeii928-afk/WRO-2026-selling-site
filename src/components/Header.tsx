@@ -40,9 +40,9 @@ export const Header: React.FC<HeaderProps> = ({currentLang,onLanguageChange,acti
   const navigate=(page:'home'|'videos',section?:string)=>{setMobileOpen(false);onNavigate(page,section);};
   const links=()=>navItems.map(item=><button key={item.id} onClick={()=>navigate(item.page,item.section)} aria-current={activeSection===item.id?'location':undefined} data-nav={item.id}
     className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection===item.id?'text-white bg-[#2d2d2a] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:bg-[#D85A30]':'text-[#d0d0cc] hover:text-white hover:bg-[#252523]'}`}>{item.label}</button>);
-  return <header className="sticky top-0 z-50 w-full bg-[#1a1a18] text-white border-b border-[#2d2d2a] shadow-md">
+  return <header className="boutique-header sticky top-0 z-50 w-full bg-[#1a1a18] text-white border-b border-[#2d2d2a]">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-18 flex items-center justify-between gap-3">
-      <button onClick={()=>navigate('home')} className="min-w-0 py-1" aria-label={t.nav.home}><img src={customLogoUrl||'/logo.svg'} alt={u.logo} className="h-9 lg:h-10 max-w-[min(55vw,220px)] w-auto object-contain"/></button>
+      <button onClick={()=>navigate('home')} className="header-brand min-w-0 py-1" aria-label={t.nav.home}><img src={customLogoUrl||'/logo.svg'} alt={u.logo} className="h-9 lg:h-10 max-w-[min(30vw,140px)] w-auto object-contain"/><span aria-hidden="true" className="header-wordmark">K.F.C.<small>ROBOTICS</small></span></button>
       <nav aria-label={u.navigation} className="hidden lg:flex items-center gap-1">{links()}</nav>
       <div className="hidden lg:flex items-center gap-3">
         <a href={subscribeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#cc0000] hover:bg-[#b00000]"><Youtube className="w-4 h-4"/><span>{t.nav.subscribe}</span></a>
