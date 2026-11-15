@@ -8,8 +8,8 @@ export function CheckoutPanel({checkoutUrl,currentLang}:{checkoutUrl:string;curr
   const url=normalizeCheckoutUrl(checkoutUrl);
   if(!url)return null;
   const t=payment[currentLang];
-  return <div id="product-checkout" className="p-5 border-t border-[#ebebe6] bg-[#fbfbfa] flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky bottom-0 z-20">
-    <div className="max-w-xl">
+  return <div id="product-checkout" className="purchase-footer shrink-0 p-3 sm:p-5 border-t border-[#ebebe6] bg-[#fbfbfa] flex flex-col sm:flex-row sm:items-center justify-between gap-3 z-20">
+    <div className="min-w-0 max-w-xl">
       <p className="text-xs font-semibold text-[#55554e] flex items-center gap-1.5"><LockKeyhole size={14}/>{t.secure}</p>
       <p className="text-xs text-[#73736c] mt-1 leading-relaxed">{t.notice}</p>
     </div>

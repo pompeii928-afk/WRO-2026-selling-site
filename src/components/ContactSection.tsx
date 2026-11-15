@@ -72,22 +72,23 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang, set
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 bg-[#fbfbfa] p-6 sm:p-8 rounded-2xl border border-[#ebebe6] shadow-xs">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 bg-[#fbfbfa] p-4 sm:p-8 rounded-2xl border border-[#ebebe6] shadow-xs">
           
           {/* 좌측 안내 정보 (2열) */}
-          <div className="md:col-span-2 space-y-6 flex flex-col justify-between">
+          <div className="min-w-0 md:col-span-2 space-y-6 flex flex-col justify-between">
             <div className="space-y-4">
               <div>
                 <span className="text-xs font-bold text-[#8e8e89] uppercase tracking-wider block mb-1">
                   {t.contact.emailLabel}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm sm:text-base font-bold font-mono text-[#1a1a18]">
+                  <span className="min-w-0 wrap-anywhere text-sm sm:text-base font-bold font-mono text-[#1a1a18]">
                     {adminEmail}
                   </span>
                   <button
                     onClick={handleCopyEmail}
-                    className="p-1.5 rounded-md hover:bg-[#ebebe6] text-[#70706a] transition-colors"
+                    aria-label={ui[currentLang].copyEmail}
+                    className="shrink-0 min-h-11 min-w-11 flex items-center justify-center rounded-md hover:bg-[#ebebe6] text-[#70706a] transition-colors"
                     title={ui[currentLang].copyEmail}
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
@@ -108,7 +109,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang, set
           </div>
 
           {/* 우측 빠른 문의 작성 양식 (3열) */}
-          <form noValidate onSubmit={handleSendEmail} className="md:col-span-3 space-y-4">
+          <form noValidate onSubmit={handleSendEmail} className="min-w-0 md:col-span-3 space-y-4">
             {formError && <p role="alert" className="text-sm text-red-700">{ui[currentLang].required}</p>}
             <div>
               <label htmlFor="sender-name" className="block text-xs font-bold text-[#33332f] mb-1.5">
@@ -121,7 +122,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang, set
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
                 placeholder={ui[currentLang].namePlaceholder}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#deded8] text-sm text-[#1a1a18] focus:border-[#D85A30] focus:ring-1 focus:ring-[#D85A30] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#deded8] text-base sm:text-sm text-[#1a1a18] focus:border-[#D85A30] focus:ring-1 focus:ring-[#D85A30] outline-none"
               />
             </div>
 
@@ -136,7 +137,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang, set
                 value={senderContact}
                 onChange={(e) => setSenderContact(e.target.value)}
                 placeholder={ui[currentLang].contactPlaceholder}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#deded8] text-sm text-[#1a1a18] focus:border-[#D85A30] focus:ring-1 focus:ring-[#D85A30] outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#deded8] text-base sm:text-sm text-[#1a1a18] focus:border-[#D85A30] focus:ring-1 focus:ring-[#D85A30] outline-none"
               />
             </div>
 
@@ -151,7 +152,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang, set
                 value={inquiryText}
                 onChange={(e) => setInquiryText(e.target.value)}
                 placeholder={ui[currentLang].messagePlaceholder}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#deded8] text-sm text-[#1a1a18] focus:border-[#D85A30] focus:ring-1 focus:ring-[#D85A30] outline-none resize-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#deded8] text-base sm:text-sm text-[#1a1a18] focus:border-[#D85A30] focus:ring-1 focus:ring-[#D85A30] outline-none resize-none"
               />
             </div>
 

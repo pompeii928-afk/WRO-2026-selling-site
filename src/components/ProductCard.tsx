@@ -37,7 +37,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
 
   return (
     <div 
-      className="flex flex-col bg-white rounded-xl border border-[#ebebe6] overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
+      className="min-w-0 flex flex-col bg-white rounded-xl border border-[#ebebe6] overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
       id={`product-card-${product.id}`}
     >
       {/* 썸네일 사진 영역 */}
@@ -86,7 +86,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
         </p>
 
         {/* 하단 가격 & 상세보기 버튼 */}
-        <div className="pt-4 border-t border-[#f0f0eb] flex items-center justify-between gap-3">
+        <div className="pt-4 border-t border-[#f0f0eb] flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-xs text-[#8e8e89] block font-medium">
               {t.products.priceLabel}
@@ -98,7 +98,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
 
           <button
             onClick={() => onSelect(product)}
-            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-[#f4f4f0] hover:bg-[#D85A30] text-[#1a1a18] hover:text-white text-sm font-semibold transition-all cursor-pointer"
+            className="min-h-11 inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-[#f4f4f0] hover:bg-[#D85A30] text-[#1a1a18] hover:text-white text-sm font-semibold transition-all cursor-pointer"
           >
             <span>{t.products.viewDetails}</span>
             <ChevronRight className="w-4 h-4" />

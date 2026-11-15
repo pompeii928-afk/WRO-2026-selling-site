@@ -6,7 +6,7 @@
  * - 인라인 플레이어 및 유튜브 원본 링크
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Youtube, Play, ExternalLink, Filter } from 'lucide-react';
 import { LanguageCode, StoreSettings, VideoItem } from '../types';
 import { translations } from '../locales/translations';
@@ -73,6 +73,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
     if (!filteredVideos.some(v => v.id === activeVideo?.id)) setActiveVideo(filteredVideos[0] || null);
   }, [filteredVideos, activeVideo?.id]);
 
+  const playerRef = useRef<HTMLDivElement>(null);
   const t = translations[currentLang];
   const channelUrl = settings.youtubeChannelUrl || 'https://www.youtube.com/channel/UC_o1n4QCZyABlKCdxI7cFPA';
   const subscribeUrl = channelUrl.includes('?') ? `${channelUrl}&sub_confirmation=1` : `${channelUrl}?sub_confirmation=1`;
@@ -97,7 +98,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
           </div>
 
           {/* 유튜브 구독 및 채널 링크 */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <a
               href={subscribeUrl}
               target="_blank"
@@ -131,7 +132,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
             <button
               aria-pressed={selectedVideoCategory === 'ALL'}
               onClick={() => setSelectedVideoCategory('ALL')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`min-h-11 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedVideoCategory === 'ALL'
                   ? 'bg-[#1a1a18] text-white shadow-xs'
                   : 'bg-white text-[#666660] hover:bg-[#ebebe6] border border-[#e0e0db]'
@@ -146,7 +147,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                   key={cat}
                   aria-pressed={selectedVideoCategory === cat}
                   onClick={() => setSelectedVideoCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                  className={`min-h-11 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     selectedVideoCategory === cat
                       ? 'bg-[#D85A30] text-white shadow-xs'
                       : 'bg-white text-[#666660] hover:bg-[#ebebe6] border border-[#e0e0db]'
@@ -161,7 +162,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
 
         {/* 메인 비디오 플레이어 (인라인 재생) */}
         {activeVideo && (
-          <div className="mb-12 bg-white rounded-2xl border border-[#ebebe6] overflow-hidden shadow-sm">
+          <div ref={playerRef} className="scroll-mt-20 mb-12 bg-white rounded-2xl border border-[#ebebe6] overflow-hidden shadow-sm">
             <div className="relative aspect-16/9 w-full bg-black">
               <iframe
                 src={`${getYoutubeEmbedUrl(activeVideo.youtubeId) || ''}&hl=${currentLang}`}
@@ -208,7 +209,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                   onClick={() => {
                     setActiveVideo(video);
                     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                      window.scrollTo({ top: 400, behavior: 'smooth' });
+                      playerRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
                     }
                   }}
                   className={`flex flex-col bg-white rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer group ${

@@ -21,3 +21,22 @@
   .welcome-title { font-size: clamp(3.05rem, 12vw, 4.5rem); }
 }
 
+
+html { scroll-padding-top: 5rem; }
+button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+:focus-visible { outline: 2px solid #D85A30; outline-offset: 3px; }
+.product-dialog { height: 100dvh; max-height: 100dvh; }
+.purchase-footer { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+@media (min-width: 640px) {
+  .product-dialog { height: auto; max-height: calc(100dvh - 3rem); }
+  .purchase-footer { padding-bottom: 1.25rem; }
+}
+@media (max-width: 640px) {
+  .welcome-title { font-size: clamp(2.5rem, 11.5vw, 4.5rem); line-height: 1.06; }
+  #contact-section, #videos-section { scroll-margin-top: 5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

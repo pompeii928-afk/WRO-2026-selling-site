@@ -7,7 +7,7 @@
  * - Gmail 자동 작성 결제 요청 버튼 (언어별 자동 번역 템플릿, 모바일 앱 폴백, URL 인코딩 완벽 대응)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   ChevronLeft, 
@@ -43,7 +43,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => { setCurrentImageIndex(0); }, [product?.id, product?.images]);
+  useEffect(() => {
+    if (!product) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); }
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], iframe, [tabindex="0"]') || [])
+        .filter(element => element.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialogRef.current)) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', keydown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', keydown);
+      previousFocus?.focus({ preventScroll: true });
+    };
+  }, [product?.id]);
 
   if (!product) return null;
 
@@ -146,22 +175,27 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[60] flex items-center justify-center sm:p-6 bg-black/60 backdrop-blur-xs animate-fadeIn"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col"
+        className="product-dialog relative w-full max-w-4xl bg-white sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col outline-none"
         onClick={(e) => e.stopPropagation()}
         id="product-detail-modal"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-detail-title"
+        tabIndex={-1}
       >
         {/* 상단 헤더 바 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#ebebe6] bg-white sticky top-0 z-20">
+        <div className="shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-2 sm:py-3 border-b border-[#ebebe6] bg-white z-20">
           <span className="text-xs font-bold uppercase tracking-wider text-[#D85A30] bg-[#fdf2ee] px-2.5 py-1 rounded-md">
             {product.category === 'WRO' ? t.products.wroBadge : t.products.cospaceBadge}
           </span>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#8e8e89] hover:text-[#1a1a18] hover:bg-[#f4f4f0] transition-colors"
+            className="shrink-0 min-h-11 min-w-11 flex items-center justify-center rounded-full text-[#8e8e89] hover:text-[#1a1a18] hover:bg-[#f4f4f0] transition-colors"
             aria-label={t.products.close}
           >
             <X className="w-6 h-6" />
@@ -169,7 +203,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
         {/* 스크롤 가능한 본문 */}
-        <div className="overflow-y-auto p-6 space-y-8 flex-1">
+        <div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1">
           
           {/* [0. 참고 디자인] 사진 갤러리: 여러 장 좌우 슬라이드 및 썸네일 바 */}
           <div className="space-y-3">
@@ -212,6 +246,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {images.map((img, idx) => (
                   <button
                     key={idx}
+                    aria-label={`${ui[currentLang].photo} ${idx + 1}`}
+                    aria-pressed={currentImageIndex === idx}
                     onClick={() => setCurrentImageIndex(idx)}
                     className={`relative w-20 h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
                       currentImageIndex === idx ? 'border-[#D85A30] scale-102' : 'border-transparent opacity-60 hover:opacity-100'
@@ -226,10 +262,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {/* 제목 & 가격 요약 */}
           <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a18] leading-snug mb-3">
+            <h2 id="product-detail-title" className="text-xl sm:text-3xl font-extrabold text-[#1a1a18] leading-snug mb-3 wrap-anywhere">
               {displayName}
             </h2>
-            <div className="flex items-baseline gap-2">
+            <div className="flex flex-wrap items-baseline gap-2">
               <span className="text-sm font-semibold text-[#8e8e89]">{t.products.priceLabel}:</span>
               <span className="text-3xl font-black text-[#D85A30] tracking-tight">{formattedPrice}</span>
             </div>
@@ -240,7 +276,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <h4 className="text-base font-bold text-[#1a1a18] flex items-center gap-2">
               <span>{ui[currentLang].details}</span>
             </h4>
-            <div className="text-sm sm:text-base text-[#444440] leading-relaxed whitespace-pre-line bg-[#fcfcfb] p-5 rounded-xl border border-[#ebebe6]">
+            <div className="text-sm sm:text-base text-[#444440] leading-relaxed whitespace-pre-line wrap-anywhere bg-[#fcfcfb] p-4 sm:p-5 rounded-xl border border-[#ebebe6]">
               {displayDesc}
             </div>
           </div>
@@ -293,21 +329,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         {/* [5. 결제 요청 (메일 자동 작성 방식)] 고정 하단 바 */}
         {checkoutUrl ? <CheckoutPanel checkoutUrl={checkoutUrl} currentLang={currentLang}/> : (
-        <div className="p-5 border-t border-[#ebebe6] bg-[#fbfbfa] flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-20">
+        <div className="purchase-footer shrink-0 p-3 sm:p-5 border-t border-[#ebebe6] bg-[#fbfbfa] flex flex-col sm:flex-row sm:items-center justify-between gap-3 z-20">
           <div className="text-left w-full sm:w-auto">
             <p className="text-xs text-[#73736c] mb-0.5">{t.emailTemplate.instruction}</p>
-            <p className="text-xs font-mono text-[#8e8e89] flex items-center gap-1">
+            <p className="text-xs font-mono text-[#8e8e89] flex items-start gap-1 wrap-anywhere">
               <ShieldCheck className="w-3.5 h-3.5 text-[#D85A30]" />
               <span>{ui[currentLang].recipient}: {recipientEmail}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:flex items-stretch gap-2 w-full sm:w-auto">
             {/* 복사 버튼 보조 도구 */}
             <button
               onClick={handleCopyDetails}
               title={t.emailTemplate.copyDetails}
-              className="px-3.5 py-3 rounded-xl border border-[#deded8] bg-white hover:bg-[#f4f4f0] text-xs font-semibold text-[#444440] transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+              className="order-2 sm:order-1 min-w-0 min-h-11 px-3 py-2.5 rounded-xl border border-[#deded8] bg-white hover:bg-[#f4f4f0] text-xs font-semibold text-[#444440] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? t.emailTemplate.copiedSuccess : t.emailTemplate.copyDetails}</span>
@@ -317,7 +353,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <button
               onClick={handlePaymentRequest}
               id="request-payment-btn"
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl bg-[#D85A30] hover:bg-[#c04e28] text-white text-base font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+              className="order-1 sm:order-2 min-w-0 min-h-11 inline-flex items-center justify-center gap-2 px-3 sm:px-6 py-2.5 rounded-xl bg-[#D85A30] hover:bg-[#c04e28] text-white text-sm sm:text-base font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
             >
               <Mail className="w-5 h-5" />
               <span>{t.products.requestPayment}</span>

@@ -263,7 +263,7 @@ export default function App() {
 
       {/* 홈 화면 메인 콘텐츠 */}
       {currentPage === 'home' && (
-        <main className="flex-1">
+        <main className="min-w-0 flex-1">
           <Hero currentLang={currentLang} settings={settings}
             onExploreClick={() => handleNavigate('home', 'products-section')}/>
 
@@ -272,7 +272,7 @@ export default function App() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
               {/* 섹션 제목 및 카테고리 탭 */}
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+              <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-5 sm:gap-6">
                 <div>
                   <h2 className="text-2xl sm:text-4xl font-extrabold text-[#1a1a18] tracking-tight">
                     {t.products.title}
@@ -283,11 +283,11 @@ export default function App() {
                 </div>
 
                 {/* 카테고리 분류 필터: 전체 + 등록된 모든 카테고리 */}
-                <div className="flex flex-wrap items-center gap-1.5 bg-[#f4f4f0] p-1.5 rounded-xl self-start md:self-auto">
+                <div className="flex flex-wrap items-center gap-1.5 bg-[#f4f4f0] p-1.5 rounded-xl max-w-full self-start md:self-auto">
                   <button
                     aria-pressed={selectedCategory === 'ALL'}
                     onClick={() => setSelectedCategory('ALL')}
-                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    className={`min-h-11 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       selectedCategory === 'ALL'
                         ? 'bg-[#1a1a18] text-white shadow-xs'
                         : 'text-[#666660] hover:text-[#1a1a18]'
@@ -306,13 +306,13 @@ export default function App() {
                         key={cat}
                         aria-pressed={isSelected}
                         onClick={() => setSelectedCategory(cat)}
-                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        className={`max-w-full min-h-11 inline-flex flex-wrap items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#1a1a18] text-white shadow-xs'
                             : 'text-[#666660] hover:text-[#1a1a18]'
                         }`}
                       >
-                        <span>{cat}</span>
+                        <span className="min-w-0 wrap-anywhere">{cat}</span>
                         <span className="text-[11px] opacity-75 font-normal">({count})</span>
                         {isYoutubeCat && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#cc0000] text-white text-[10px] font-bold shadow-xs">
@@ -328,7 +328,7 @@ export default function App() {
 
               {/* 제품 그리드: 데스크탑 3열, 태블릿 2열, 모바일 1열 */}
               {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -369,7 +369,7 @@ export default function App() {
 
       {/* [4. 유튜브 연동] 별도 "영상" 전용 페이지 */}
       {currentPage === 'videos' && (
-        <main className="flex-1">
+        <main className="min-w-0 flex-1">
           <VideosSection
             currentLang={currentLang}
             settings={settings}

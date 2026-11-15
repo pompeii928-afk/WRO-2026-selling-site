@@ -45,9 +45,9 @@ export const Footer: React.FC<FooterProps> = ({
               className="inline-block cursor-pointer"
             >
               {customLogoUrl ? (
-                <img src={customLogoUrl} alt={ui[currentLang].logo} className="h-9 md:h-10 w-auto object-contain" />
+                <img src={customLogoUrl} alt={ui[currentLang].logo} className="h-9 md:h-10 max-w-full w-auto object-contain" />
               ) : (
-                <img src="/logo.svg" alt={ui[currentLang].logo} className="h-9 md:h-10 w-auto object-contain" />
+                <img src="/logo.svg" alt={ui[currentLang].logo} className="h-9 md:h-10 max-w-full w-auto object-contain" />
               )}
             </div>
             <p className="text-sm text-[#a3a39e] max-w-sm leading-relaxed">
@@ -110,8 +110,8 @@ export const Footer: React.FC<FooterProps> = ({
             <p className="text-xs font-bold text-white uppercase tracking-wider">{ui[currentLang].support}</p>
             <ul className="space-y-2 text-sm text-[#a3a39e]">
               <li className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-[#D85A30]" />
-                <span className="font-mono text-xs">{settings.adminEmail}</span>
+                <Mail className="shrink-0 w-3.5 h-3.5 text-[#D85A30]" />
+                <span className="min-w-0 wrap-anywhere font-mono text-xs">{settings.adminEmail}</span>
               </li>
 
             </ul>
