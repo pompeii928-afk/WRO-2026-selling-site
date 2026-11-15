@@ -13,3 +13,11 @@
   }
 }
 
+.welcome-title { font-size: clamp(3.5rem, 7.8vw, 6.75rem); }
+.welcome-watermark { width: min(70vw, 900px); right: -5%; top: 4%; opacity: .055; transform: rotate(-8deg); }
+.welcome-glow { width: 40rem; height: 40rem; right: -15rem; top: -20rem; background: radial-gradient(circle, #d35b3110, transparent 68%); }
+@media (max-width: 640px) {
+  .welcome-watermark { width: 110vw; right: -31%; top: 19%; opacity: .045; }
+  .welcome-title { font-size: clamp(3.05rem, 12vw, 4.5rem); }
+}
+

@@ -3,6 +3,7 @@ import { DEFAULT_PRODUCTS, DEFAULT_SETTINGS, DEFAULT_VIDEOS } from '../utils/sto
 import { catalog, videoTitles } from './catalog';
 import { translations } from './translations';
 import { publishedSource, publishedTranslations, publishedVideoTitles } from './published';
+import { welcome } from './welcome';
 
 export function productText(product: Product, lang: LanguageCode): Required<ProductTranslation> {
   const original = DEFAULT_PRODUCTS.find(p => p.id === product.id) || (product.id === publishedSource.id ? publishedSource : undefined);
@@ -19,7 +20,7 @@ export function productText(product: Product, lang: LanguageCode): Required<Prod
 }
 export function heroText(settings: StoreSettings, lang: LanguageCode) {
   const t = translations[lang].hero;
-  const defaults = {heroTitle:t.title,heroSubtitle:t.subtitle,heroButtonText:t.ctaButton};
+  const defaults = {heroTitle:welcome[lang].title,heroSubtitle:welcome[lang].subtitle,heroButtonText:t.ctaButton};
   const field = (key: keyof typeof defaults) => settings.translations?.[lang]?.[key] || (settings[key] === DEFAULT_SETTINGS[key] ? defaults[key] : settings[key]) || defaults[key];
   return {title:field('heroTitle'),subtitle:field('heroSubtitle'),buttonText:field('heroButtonText')};
 }

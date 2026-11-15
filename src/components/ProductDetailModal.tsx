@@ -7,7 +7,7 @@
  * - Gmail 자동 작성 결제 요청 버튼 (언어별 자동 번역 템플릿, 모바일 앱 폴백, URL 인코딩 완벽 대응)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   ChevronLeft, 
@@ -41,6 +41,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  useEffect(() => { setCurrentImageIndex(0); }, [product?.id, product?.images]);
 
   if (!product) return null;
 

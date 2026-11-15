@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Product, StoreSettings, VideoItem } from '../types';
+import { withoutUndefined } from './productMedia';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'ROBO_STORE_PRODUCTS_V2',
@@ -250,7 +251,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   categories: ['WRO', 'CoSpace'],
   videoCategories: ['WRO Senior', 'WRO Junior', 'CoSpace Rescue', 'Tutorial', 'Engineering'],
   youtubeDisplayCategory: 'ALL',
-  showHeroSection: false, // 사용자 요청으로 히어로 섹션 기본 숨김
+  showHeroSection: true, // 홈 환영 배너 표시 (이전 백업과의 필드 호환 유지)
 };
 
 // ==========================================
@@ -385,7 +386,7 @@ export async function fetchCloudProducts(): Promise<Product[]> {
 export async function saveProductToCloud(product: Product): Promise<void> {
   try {
     const docRef = doc(db, 'products', product.id);
-    await setDoc(docRef, product);
+    await setDoc(docRef, withoutUndefined(product));
 
     const current = loadProducts();
     const idx = current.findIndex((p) => p.id === product.id);

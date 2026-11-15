@@ -264,20 +264,11 @@ export default function App() {
       {/* 홈 화면 메인 콘텐츠 */}
       {currentPage === 'home' && (
         <main className="flex-1">
-          {/* [0. 참고 디자인] 히어로 섹션 (설정에서 showHeroSection 활성화 시 표시) */}
-          {settings.showHeroSection && (
-            <Hero
-              currentLang={currentLang}
-              settings={settings}
-              onExploreClick={() => {
-                const el = document.getElementById('products-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-          )}
+          <Hero currentLang={currentLang} settings={settings}
+            onExploreClick={() => handleNavigate('home', 'products-section')}/>
 
           {/* [2. 판매 제품] 제품 그리드 섹션 */}
-          <section id="products-section" className={`${settings.showHeroSection ? 'py-16 md:py-24' : 'pt-8 md:pt-14 pb-16 md:pb-24'} bg-white scroll-mt-20`}>
+          <section id="products-section" className="py-16 md:py-24 bg-white scroll-mt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
               {/* 섹션 제목 및 카테고리 탭 */}
@@ -399,7 +390,7 @@ export default function App() {
       {/* [0. 참고 디자인] 제품 상세 모달 (사진 슬라이더, 설명, 포함 내용, 유튜브 주행 영상, Gmail 결제 요청) */}
       {selectedProduct && (
         <ProductDetailModal
-          product={selectedProduct}
+          product={products.find(product => product.id === selectedProduct.id) || selectedProduct}
           currentLang={currentLang}
           settings={settings}
           onClose={() => setSelectedProduct(null)}

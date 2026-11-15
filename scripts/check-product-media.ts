@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { chooseCover, replaceCover, withoutUndefined } from '../src/utils/productMedia';
+const gallery=['old-cover','detail-1','detail-2'];
+assert.deepEqual(replaceCover(gallery,'new-cover'),['new-cover','detail-1','detail-2']);
+assert.deepEqual(replaceCover([],'first'),['first']);
+assert.deepEqual(chooseCover(gallery,2),['detail-2','old-cover','detail-1']);
+assert.deepEqual(gallery,['old-cover','detail-1','detail-2'],'Editing must not mutate existing product data');
+assert.deepEqual(chooseCover(gallery,8),gallery);
+const draft={images:['new-cover'],translations:{en:{name:'Robot',description:undefined,includedItems:undefined},ja:{description:'説明'}},youtubeUrl:undefined};
+const saved=withoutUndefined(draft);
+assert.deepEqual(saved,{images:['new-cover'],translations:{en:{name:'Robot'},ja:{description:'説明'}}});
+assert.equal(JSON.stringify(saved).includes('old-cover'),false);
+assert.deepEqual(withoutUndefined({images:[],translations:{}}),{images:[],translations:{}},'Deleting every image must not resurrect the old cover');
+console.log('PASS: replacing cover, promoting gallery photo, immutable edits, empty gallery, Firestore-safe partial translations');

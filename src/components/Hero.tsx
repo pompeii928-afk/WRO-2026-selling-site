@@ -1,15 +1,8 @@
-/**
- * @file Hero.tsx
- * @description the15thfloor.com 스타일의 미니멀하면서 권위 있는 히어로 섹션
- * 큰 제목, 한 줄 설명, "제품 보러가기" 주황색 버튼(#D85A30) 및 특장점 뱃지
- */
-
 import React from 'react';
-import { ArrowDown, Cpu, FileText, PlayCircle } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { LanguageCode, StoreSettings } from '../types';
-import { translations } from '../locales/translations';
-import { ui, localeFor } from '../locales/ui';
-import { productText, heroText, videoTitle, categoryText } from '../locales/content';
+import { heroText } from '../locales/content';
+import { welcome } from '../locales/welcome';
 
 interface HeroProps {
   currentLang: LanguageCode;
@@ -18,73 +11,30 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClick }) => {
-  const t = translations[currentLang];
-
-  // 커스텀 설정이 있으면 우선 사용하고 없으면 다국어 기본값 적용
   const {title, subtitle, buttonText} = heroText(settings, currentLang);
-
-  return (
-    <section className="relative bg-white pt-16 pb-20 md:pt-24 md:pb-28 border-b border-[#ecece8] overflow-hidden">
-      {/* 은은한 배경 기하학 패턴 */}
-      <div className="absolute inset-0 bg-[radial-gradient(#e5e5e0_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
-
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        {/* 메인 헤드라인: 높은 대비, 가독성 높은 디스플레이 타이포그래피 */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-[#1a1a18] tracking-tight leading-[1.18] whitespace-pre-line mb-6 font-['Pretendard']">
-          {title}
-        </h1>
-
-        {/* 서브 카피: 65~75자 최적 가독성 폭 */}
-        <p className="max-w-2xl mx-auto text-base sm:text-lg text-[#555550] leading-relaxed mb-10 font-normal">
-          {subtitle}
-        </p>
-
-        {/* 액션 버튼 */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <button
-            onClick={onExploreClick}
-            id="hero-cta-btn"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-[#D85A30] hover:bg-[#c04e28] text-white text-base font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.99] cursor-pointer"
-          >
-            <span>{buttonText}</span>
-            <ArrowDown className="w-4 h-4 transition-transform group-hover:translate-y-0.5" />
-          </button>
-        </div>
-
-        {/* 핵심 가치 3요소 */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-[#f9f9f7] border border-[#ebebe6] transition-colors hover:border-[#deded8]">
-            <div className="p-2.5 rounded-lg bg-[#ffffff] text-[#D85A30] shadow-xs">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-[#70706a] font-medium">{ui[currentLang].step} 1</p>
-              <p className="text-sm font-bold text-[#1a1a18]">{t.hero.feature1}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-[#f9f9f7] border border-[#ebebe6] transition-colors hover:border-[#deded8]">
-            <div className="p-2.5 rounded-lg bg-[#ffffff] text-[#D85A30] shadow-xs">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-[#70706a] font-medium">{ui[currentLang].step} 2</p>
-              <p className="text-sm font-bold text-[#1a1a18]">{t.hero.feature2}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-[#f9f9f7] border border-[#ebebe6] transition-colors hover:border-[#deded8]">
-            <div className="p-2.5 rounded-lg bg-[#ffffff] text-[#D85A30] shadow-xs">
-              <PlayCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-[#70706a] font-medium">{ui[currentLang].step} 3</p>
-              <p className="text-sm font-bold text-[#1a1a18]">{t.hero.feature3}</p>
-            </div>
-          </div>
-        </div>
-
+  const copy = welcome[currentLang];
+  return <section id="welcome-section" className="welcome-hero relative isolate overflow-hidden border-b border-[#e5e2da] bg-[#f5f4ef]">
+    <div aria-hidden="true" className="welcome-glow pointer-events-none absolute rounded-full"/>
+    <svg aria-hidden="true" focusable="false" viewBox="699 705 1522 1156" className="welcome-watermark pointer-events-none absolute select-none">
+      <image href="/channel-mark.png" width="2720" height="2720"/>
+    </svg>
+    <div className="relative max-w-7xl mx-auto px-6 sm:px-10 lg:px-8 pt-16 sm:pt-20 pb-8">
+      <div className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.16em] uppercase text-[#6e6c64]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#d35b31]"/>
+        <span>K.F.C. ROBOTICS</span><span className="h-3 w-px bg-[#b7b4aa]"/><span>{copy.eyebrow}</span>
       </div>
-    </section>
-  );
+      <div className="py-10 sm:py-12 lg:py-14 max-w-3xl">
+        <h1 className="welcome-title text-[#1a1a18] font-extrabold tracking-[-0.055em] leading-[0.98] whitespace-pre-line">{title}</h1>
+        <p className="mt-7 sm:mt-8 text-base sm:text-lg text-[#66645d] max-w-xl leading-relaxed whitespace-pre-line">{subtitle}</p>
+        <button onClick={onExploreClick} id="hero-cta-btn" className="mt-8 sm:mt-9 inline-flex items-center gap-6 rounded-full bg-[#1a1a18] px-6 py-4 text-sm font-semibold text-white hover:bg-[#d35b31] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d35b31] transition-colors">
+          {buttonText}<ArrowUpRight size={18}/>
+        </button>
+      </div>
+      <div className="mt-5 pt-6 border-t border-[#d9d6cd] flex flex-wrap items-center justify-between gap-4 text-[11px] sm:text-xs text-[#737168]">
+        <span className="font-semibold tracking-[0.1em]">WRO &amp; CoSpace Rescue</span>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">{copy.labels.map(label=><span key={label}>{label}</span>)}</div>
+        <ArrowDownRight size={20} aria-hidden="true" className="text-[#d35b31] hidden sm:block"/>
+      </div>
+    </div>
+  </section>;
 };

@@ -67,6 +67,7 @@ import {
 } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import { extractYoutubeId } from '../utils/youtube';
+import { ProductImageEditor } from './admin/ProductImageEditor';
 import { VideoManagementSection } from './admin/VideoManagementSection';
 
 interface AdminPageProps {
@@ -112,6 +113,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // 제품 편집 모달/폼 상태
   const [isEditingProduct, setIsEditingProduct] = useState<boolean>(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [compressingPhotos, setCompressingPhotos] = useState<boolean>(false);
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
 
@@ -134,7 +136,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [transIncludedText, setTransIncludedText] = useState<Record<string, string>>({});
 
   // 파일 인풋 참조
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -290,63 +291,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setIsEditingProduct(true);
   };
 
-  // [3. 사진 업로드]: 이미지 다중 선택 및 브라우저 자동 압축 처리
-  const handleImageFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setCompressingPhotos(true);
-    try {
-      const compressedUrls: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.type.startsWith('image/')) {
-          const compressed = await compressImage(file, { maxWidth: 1400, maxHeight: 1400, quality: 0.82 });
-          compressedUrls.push(compressed);
-        }
-      }
-      setFormImages((prev) => [...prev, ...compressedUrls]);
-      showFeedback(`${compressedUrls.length}장의 사진이 최적화되어 등록되었습니다.`);
-    } catch {
-      alert('이미지 최적화 중 오류가 발생했습니다.');
-    } finally {
-      setCompressingPhotos(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  // 사진 삭제
-  const handleDeleteImage = (index: number) => {
-    setFormImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // 사진 순서 변경 (좌로 이동)
-  const handleMoveImageLeft = (index: number) => {
-    if (index === 0) return;
-    setFormImages((prev) => {
-      const copy = [...prev];
-      const temp = copy[index - 1];
-      copy[index - 1] = copy[index];
-      copy[index] = temp;
-      return copy;
-    });
-  };
-
-  // 사진 순서 변경 (우로 이동)
-  const handleMoveImageRight = (index: number) => {
-    if (index >= formImages.length - 1) return;
-    setFormImages((prev) => {
-      const copy = [...prev];
-      const temp = copy[index + 1];
-      copy[index + 1] = copy[index];
-      copy[index] = temp;
-      return copy;
-    });
-  };
-
   // 제품 저장 처리 (추가 또는 수정)
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingProduct || compressingPhotos) return;
     if (!formName.trim()) {
       alert('제품명을 입력해주세요.');
       return;
@@ -392,12 +340,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         shortDescription: formShortDesc,
         description: formDesc,
         includedItems,
-        images: formImages.length > 0 ? formImages : (products.find((p) => p.id === editingProductId)?.images || []),
+        images: formImages,
         youtubeUrl: formYoutubeUrl,
         translations: translationsData,
       };
       updatedList = products.map((p) => (p.id === editingProductId ? targetProd : p));
-      showFeedback('제품이 성공적으로 수정되었습니다.');
     } else {
       // 신규 추가
       targetProd = {
@@ -417,21 +364,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         createdAt: new Date().toISOString().slice(0, 10),
       };
       updatedList = [targetProd, ...products];
-      showFeedback('새 제품이 성공적으로 등록되었습니다.');
     }
 
-    setProducts(updatedList);
-    saveProducts(updatedList);
-    setIsEditingProduct(false);
-    onDataChange?.();
-
-    // Firestore 클라우드 영구 저장 (모든 사용자에게 즉시 공유)
+    setSavingProduct(true);
     try {
+      // Only acknowledge success after the cloud has accepted the new cover.
       await saveProductToCloud(targetProd);
-      showFeedback('Firebase 클라우드에 성공적으로 저장 및 전세계 실시간 반영되었습니다!');
+      setProducts(updatedList);
+      saveProducts(updatedList);
+      setIsEditingProduct(false);
+      onDataChange?.();
+      showFeedback('대표 사진과 상품 정보가 클라우드에 저장되어 사이트에 반영되었습니다.');
     } catch (err) {
       console.error('클라우드 제품 동기화 오류:', err);
-      alert('Firebase 클라우드 저장 중 오류가 발생했습니다: ' + err);
+      alert('저장하지 못했습니다. 선택한 사진은 유지됩니다. 다시 저장해주세요.\n' + err);
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -1076,7 +1024,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   </button>
                 </div>
 
-                <form onSubmit={handleSaveProduct} className="space-y-6">
+                <form onSubmit={handleSaveProduct} className="space-y-6" aria-busy={savingProduct}>
+                  <fieldset disabled={savingProduct} className="space-y-6">
                   
                   {/* 카테고리 & 가격 */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1193,99 +1142,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     )}
                   </div>
 
-                  {/* [3. 사진 업로드]: 로봇 사진 직접 업로드, 다중 등록, 드래그/버튼 순서 변경, 자동 리사이징 & 압축 */}
-                  <div className="pt-4 border-t border-[#f0f0eb]">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <label className="text-sm font-bold text-[#1a1a18] block">
-                          로봇 사진 등록 &amp; 관리 (첫 번째 사진이 대표 썸네일)
-                        </label>
-                        <p className="text-xs text-[#70706a]">
-                          여러 장 업로드 가능하며, 브라우저에서 자동으로 최적화(압축 및 리사이징)되어 즉시 로딩됩니다.
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageFilesSelected}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={compressingPhotos}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a18] hover:bg-[#2d2d2a] text-white text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>{compressingPhotos ? '압축 처리 중...' : '사진 파일 추가'}</span>
-                      </button>
-                    </div>
-
-                    {/* 이미지 리스트 & 순서 변경 */}
-                    {formImages.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {formImages.map((img, idx) => (
-                          <div key={idx} className="relative aspect-4/3 rounded-xl overflow-hidden border border-[#deded8] bg-[#1a1a18] group">
-                            <img src={img} alt="" className="w-full h-full object-cover" />
-                            
-                            {/* 대표 뱃지 */}
-                            {idx === 0 && (
-                              <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-[#D85A30] text-white text-[10px] font-bold shadow-xs">
-                                대표 썸네일
-                              </span>
-                            )}
-
-                            {/* 컨트롤 오버레이 */}
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              {idx > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleMoveImageLeft(idx)}
-                                  className="p-1.5 rounded-full bg-white/80 hover:bg-white text-black transition-colors"
-                                  title="앞으로 이동"
-                                >
-                                  <ArrowLeft className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteImage(idx)}
-                                className="p-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors"
-                                title="사진 삭제"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                              {idx < formImages.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleMoveImageRight(idx)}
-                                  className="p-1.5 rounded-full bg-white/80 hover:bg-white text-black transition-colors"
-                                  title="뒤로 이동"
-                                >
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-8 border-2 border-dashed border-[#deded8] rounded-xl text-center bg-[#fbfbfa] hover:bg-[#f5f5f0] cursor-pointer transition-colors"
-                      >
-                        <Upload className="w-8 h-8 text-[#a3a39e] mx-auto mb-2" />
-                        <p className="text-xs font-semibold text-[#555550]">
-                          클릭하여 로봇 사진을 업로드하세요 (여러 장 선택 가능)
-                        </p>
-                        <p className="text-[11px] text-[#8e8e89] mt-1">
-                          자동 리사이즈 &amp; WebP 최적화 압축 지원
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <ProductImageEditor images={formImages} onChange={setFormImages}
+                    onBusyChange={setCompressingPhotos} disabled={savingProduct}/>
 
                   {/* [6. 다국어 번역 설정] */}
                   <div className="pt-4 border-t border-[#f0f0eb]">
@@ -1385,13 +1243,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     <button
                       type="submit"
                       id="save-product-submit-btn"
+                      disabled={savingProduct || compressingPhotos}
                       className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#D85A30] hover:bg-[#c04e28] text-white text-xs font-bold transition-colors cursor-pointer shadow-xs active:scale-[0.99]"
                     >
                       <Save className="w-4 h-4" />
-                      <span>{editingProductId ? '수정사항 저장' : '새 제품 저장'}</span>
+                      <span>{savingProduct ? '클라우드 저장 중...' : compressingPhotos ? '사진 최적화 중...' : editingProductId ? '수정사항 저장' : '새 제품 저장'}</span>
                     </button>
                   </div>
 
+                                  </fieldset>
                 </form>
               </div>
             )}
@@ -1695,28 +1555,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 </select>
               </div>
 
-              {/* 홈 화면 히어로 배너 섹션 표시 여부 토글 */}
-              <div className="p-4 rounded-xl bg-[#f7f7f5] border border-[#e2e2dc]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-xs font-bold text-[#1a1a18]">
-                      홈 화면 히어로 배너 섹션 표시 여부
-                    </label>
-                    <p className="text-xs text-[#70706a] mt-0.5">
-                      홈 상단의 큰 제목 및 소개글 배너를 표시할지 설정합니다. (끄면 방문자가 첫 화면에서 바로 제품 목록을 봅니다)
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
-                    <input
-                      type="checkbox"
-                      checked={!!settings.showHeroSection}
-                      onChange={(e) => setSettings({ ...settings, showHeroSection: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-[#deded8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#D85A30]"></div>
-                  </label>
-                </div>
-              </div>
+              <p className="rounded-xl bg-[#f7f7f5] p-4 text-xs text-[#70706a]">
+                홈에는 로고 배경의 환영 배너가 표시됩니다. 아래에서 제목, 소개글, 버튼 문구를 수정할 수 있습니다.
+              </p>
 
               {/* 히어로 메인 타이틀 */}
               <div>
