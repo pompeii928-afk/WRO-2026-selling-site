@@ -112,6 +112,9 @@ button, a { touch-action: manipulation; }
 .storefront #videos-section [class*='text-[#D85A30]'], .storefront #videos-section [class*='text-[#cc0000]'] { color: #242424; }
 .storefront #videos-section [class*='bg-[#cc0000]'], .storefront #videos-section button[aria-pressed=true] { background: #171717; color: white; }
 .storefront #videos-section [class*='bg-[#ffebee]'], .storefront #videos-section [class*='bg-[#fef1ec]'] { background: #e8e8e5; color: #4a4a4a; border-radius: 0; font-weight: 500; }
+.storefront main [class*='text-[#D85A30]'], .storefront main [class*='text-[#cc0000]'] { color: #222; }
+.storefront main [class*='bg-[#D85A30]'], .storefront main [class*='bg-[#cc0000]'] { background: #171717; }
+.storefront #videos-section [class*='border-[#D85A30]'] { border-color: #222; --tw-ring-color: #22222220; }
 .storefront #contact-section { padding-block: 96px; border-color: #dedede; }
 .storefront #contact-section > div { max-width: 1150px; padding-inline: 48px; }
 .storefront #contact-section h2 { font-size: clamp(30px, 3.3vw, 44px); }

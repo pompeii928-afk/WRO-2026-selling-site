@@ -12,7 +12,7 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClick }) => {
-  const {title, subtitle} = heroText(settings, currentLang);
+  const {title, subtitle, buttonText} = heroText(settings, currentLang);
   const copy = welcome[currentLang];
   const brand = boutique[currentLang];
   return <section id="welcome-section" className="boutique-hero relative isolate overflow-hidden">
@@ -23,7 +23,7 @@ export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClic
           <p className="boutique-eyebrow"><span className="copper-rule"/>{copy.eyebrow}</p>
           <h1 className="boutique-title whitespace-pre-line wrap-anywhere">{title}</h1>
           <p className="hero-description whitespace-pre-line">{subtitle}</p>
-          <button onClick={onExploreClick} id="hero-cta-btn" className="boutique-cta">{brand.explore}<ArrowUpRight size={18}/></button>
+          <button onClick={onExploreClick} id="hero-cta-btn" className="boutique-cta">{buttonText}<ArrowUpRight size={18}/></button>
         </div>
         <div className="brand-art" aria-hidden="true">
           <span className="art-corner art-corner-tl"/><span className="art-corner art-corner-br"/>
