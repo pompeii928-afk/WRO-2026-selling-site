@@ -1295,7 +1295,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           다국어 번역 설정 (선택 사항)
                         </label>
                         <p className="text-xs text-[#70706a]">
-                          비워둘 경우 한국어 원문이 자동으로 보여집니다.
+                          모든 언어의 제품명, 요약, 상세 설명과 포함 항목을 입력하면 방문자가 선택한 언어로 전체 상품 정보가 표시됩니다.
                         </p>
                       </div>
                       
@@ -1329,7 +1329,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           type="text"
                           value={transName[selectedTransLang] || ''}
                           onChange={(e) => setTransName({ ...transName, [selectedTransLang]: e.target.value })}
-                          placeholder="영문/다국어 제품명 입력 (비워둘 시 한국어 사용)"
+                          placeholder="선택한 언어로 제품명 입력"
                           className="w-full px-3 py-2 rounded-lg border border-[#deded8] bg-white text-xs text-[#1a1a18] outline-none"
                         />
                       </div>
@@ -1356,6 +1356,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           value={transDesc[selectedTransLang] || ''}
                           onChange={(e) => setTransDesc({ ...transDesc, [selectedTransLang]: e.target.value })}
                           placeholder="영문/다국어 상세 설명"
+                          className="w-full px-3 py-2 rounded-lg border border-[#deded8] bg-white text-xs text-[#1a1a18] outline-none resize-y"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[#555550] mb-1">
+                          패키지 포함 항목 ({selectedTransLang.toUpperCase()}, 한 줄에 하나)
+                        </label>
+                        <textarea rows={5}
+                          value={transIncludedText[selectedTransLang] || ''}
+                          onChange={(e) => setTransIncludedText({ ...transIncludedText, [selectedTransLang]: e.target.value })}
+                          placeholder="선택한 언어로 포함 항목을 한 줄에 하나씩 입력"
                           className="w-full px-3 py-2 rounded-lg border border-[#deded8] bg-white text-xs text-[#1a1a18] outline-none resize-y"
                         />
                       </div>

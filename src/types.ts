@@ -56,6 +56,7 @@ export interface StoreSettings {
 export interface VideoItem {
   id: string;
   title: string;
+  translations?: Partial<Record<LanguageCode, { title?: string }>>;
   youtubeId: string;
   category: string; // 영상 카테고리 (WRO Senior, CoSpace Rescue 등)
   thumbnailUrl: string;

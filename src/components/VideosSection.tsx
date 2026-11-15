@@ -10,6 +10,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Youtube, Play, ExternalLink, Filter } from 'lucide-react';
 import { LanguageCode, StoreSettings, VideoItem } from '../types';
 import { translations } from '../locales/translations';
+import { ui, localeFor } from '../locales/ui';
+import { productText, heroText, videoTitle, categoryText } from '../locales/content';
 import { getYoutubeEmbedUrl } from '../utils/youtube';
 import { DEFAULT_VIDEOS } from '../utils/storage';
 
@@ -67,12 +69,16 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
     return videoList.filter((v) => v.category === selectedVideoCategory);
   }, [videoList, selectedVideoCategory]);
 
+  useEffect(() => {
+    if (!filteredVideos.some(v => v.id === activeVideo?.id)) setActiveVideo(filteredVideos[0] || null);
+  }, [filteredVideos, activeVideo?.id]);
+
   const t = translations[currentLang];
   const channelUrl = settings.youtubeChannelUrl || 'https://www.youtube.com/channel/UC_o1n4QCZyABlKCdxI7cFPA';
   const subscribeUrl = channelUrl.includes('?') ? `${channelUrl}&sub_confirmation=1` : `${channelUrl}?sub_confirmation=1`;
 
   return (
-    <section className={`w-full ${isStandalonePage ? 'py-12 md:py-20' : 'py-16 md:py-24'} bg-[#fbfbfa] border-t border-[#ecece8]`}>
+    <section id="videos-section" className={`w-full ${isStandalonePage ? 'py-12 md:py-20' : 'py-16 md:py-24'} bg-[#fbfbfa] border-t border-[#ecece8]`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* 상단 섹션 헤더 */}
@@ -80,7 +86,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#ffebee] text-[#cc0000] text-xs font-bold mb-3">
               <Youtube className="w-4 h-4" />
-              <span>YOUTUBE CHANNEL</span>
+              <span>{ui[currentLang].youtubeChannel}</span>
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-[#1a1a18] tracking-tight">
               {t.videos.title}
@@ -120,9 +126,10 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
           <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-8 no-scrollbar">
             <div className="flex items-center gap-1 text-xs font-bold text-[#888882] mr-1 shrink-0">
               <Filter className="w-3.5 h-3.5" />
-              <span>카테고리:</span>
+              <span>{ui[currentLang].category}:</span>
             </div>
             <button
+              aria-pressed={selectedVideoCategory === 'ALL'}
               onClick={() => setSelectedVideoCategory('ALL')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedVideoCategory === 'ALL'
@@ -130,13 +137,14 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                   : 'bg-white text-[#666660] hover:bg-[#ebebe6] border border-[#e0e0db]'
               }`}
             >
-              전체보기 ({videoList.length})
+              {ui[currentLang].allVideos} ({videoList.length})
             </button>
             {availableCategories.map((cat) => {
               const count = videoList.filter((v) => v.category === cat).length;
               return (
                 <button
                   key={cat}
+                  aria-pressed={selectedVideoCategory === cat}
                   onClick={() => setSelectedVideoCategory(cat)}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     selectedVideoCategory === cat
@@ -144,7 +152,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                       : 'bg-white text-[#666660] hover:bg-[#ebebe6] border border-[#e0e0db]'
                   }`}
                 >
-                  {cat} ({count})
+                  {categoryText(cat,currentLang)} ({count})
                 </button>
               );
             })}
@@ -156,8 +164,8 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
           <div className="mb-12 bg-white rounded-2xl border border-[#ebebe6] overflow-hidden shadow-sm">
             <div className="relative aspect-16/9 w-full bg-black">
               <iframe
-                src={getYoutubeEmbedUrl(activeVideo.youtubeId) || ''}
-                title={activeVideo.title}
+                src={`${getYoutubeEmbedUrl(activeVideo.youtubeId) || ''}&hl=${currentLang}`}
+                title={videoTitle(activeVideo,currentLang)}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -166,10 +174,10 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
             <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
               <div>
                 <span className="text-xs font-bold text-[#D85A30] uppercase tracking-wide bg-[#fef1ec] px-2.5 py-1 rounded-md mb-2 inline-block">
-                  {activeVideo.category}
+                  {categoryText(activeVideo.category,currentLang)}
                 </span>
                 <h3 className="text-lg sm:text-xl font-bold text-[#1a1a18]">
-                  {activeVideo.title}
+                  {videoTitle(activeVideo,currentLang)}
                 </h3>
               </div>
               <a
@@ -188,7 +196,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
         {/* 영상 그리드 목록 */}
         {filteredVideos.length === 0 ? (
           <div className="p-12 text-center bg-white rounded-2xl border border-[#ebebe6]">
-            <p className="text-[#888882] text-sm">해당 카테고리에 등록된 영상이 없습니다.</p>
+            <p className="text-[#888882] text-sm">{ui[currentLang].emptyVideos}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -211,7 +219,7 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                   <div className="relative aspect-16/9 w-full bg-[#1a1a18] overflow-hidden">
                     <img
                       src={video.thumbnailUrl}
-                      alt={video.title}
+                      alt={videoTitle(video,currentLang)}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -225,14 +233,14 @@ export const VideosSection: React.FC<VideosSectionProps> = ({
                       </div>
                     )}
                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-xs font-semibold">
-                      {video.category}
+                      {categoryText(video.category,currentLang)}
                     </div>
                   </div>
 
                   {/* 텍스트 정보 */}
                   <div className="p-4 flex flex-col flex-1 justify-between">
                     <h4 className="text-sm font-bold text-[#1a1a18] line-clamp-2 leading-snug group-hover:text-[#D85A30] transition-colors mb-3">
-                      {video.title}
+                      {videoTitle(video,currentLang)}
                     </h4>
                     <div className="flex items-center justify-between text-xs text-[#8e8e89] font-medium pt-2 border-t border-[#f4f4f0]">
                       <span className="flex items-center gap-1 text-[#cc0000]">

@@ -8,6 +8,8 @@ import React from 'react';
 import { ChevronRight, FileCode2, Play } from 'lucide-react';
 import { LanguageCode, Product } from '../types';
 import { translations } from '../locales/translations';
+import { ui, localeFor } from '../locales/ui';
+import { productText, heroText, videoTitle, categoryText } from '../locales/content';
 
 interface ProductCardProps {
   product: Product;
@@ -19,13 +21,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
   const t = translations[currentLang];
 
   // 다국어 번역 가져오기 (없으면 한국어 기본값 사용)
-  const trans = product.translations?.[currentLang];
-  const displayName = trans?.name || product.name;
-  const displayShortDesc = trans?.shortDescription || product.shortDescription;
+  const {name: displayName, shortDescription: displayShortDesc} = productText(product, currentLang);
 
   // 가격 포맷팅 (원화 기준 또는 USD 등)
   const formattedPrice = new Intl.NumberFormat(
-    currentLang === 'ko' ? 'ko-KR' : currentLang === 'ja' ? 'ja-JP' : 'en-US',
+    localeFor[currentLang],
     {
       style: 'currency',
       currency: product.currency || 'KRW',
@@ -60,7 +60,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, currentLang, 
               : 'bg-[#D85A30] text-white'
           }`}>
             <FileCode2 className="w-3.5 h-3.5" />
-            {product.category === 'WRO' ? t.products.wroBadge : t.products.cospaceBadge}
+            {product.category === 'WRO' ? t.products.wroBadge : product.category === 'CoSpace' ? t.products.cospaceBadge : categoryText(product.category,currentLang)}
           </span>
         </div>
 

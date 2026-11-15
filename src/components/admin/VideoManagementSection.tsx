@@ -58,6 +58,7 @@ export const VideoManagementSection: React.FC<VideoManagementSectionProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState('');
+  const [modalTranslations, setModalTranslations] = useState<NonNullable<VideoItem['translations']>>({});
   const [modalYoutubeUrl, setModalYoutubeUrl] = useState('');
   const [modalCategory, setModalCategory] = useState('');
   const [modalCustomCategory, setModalCustomCategory] = useState('');
@@ -219,6 +220,7 @@ export const VideoManagementSection: React.FC<VideoManagementSectionProps> = ({
   const handleOpenAddModal = () => {
     setEditingVideoId(null);
     setModalTitle('');
+    setModalTranslations({});
     setModalYoutubeUrl('');
     setModalCategory(videoCategories[0] || 'WRO Senior');
     setModalCustomCategory('');
@@ -230,6 +232,7 @@ export const VideoManagementSection: React.FC<VideoManagementSectionProps> = ({
   const handleOpenEditModal = (v: VideoItem) => {
     setEditingVideoId(v.id);
     setModalTitle(v.title);
+    setModalTranslations(v.translations || {});
     setModalYoutubeUrl(`https://www.youtube.com/watch?v=${v.youtubeId}`);
     if (videoCategories.includes(v.category)) {
       setModalCategory(v.category);
@@ -285,6 +288,7 @@ export const VideoManagementSection: React.FC<VideoManagementSectionProps> = ({
           ...prev!,
           id: editingVideoId,
           title: modalTitle.trim(),
+          translations: modalTranslations,
           youtubeId: yId,
           category: finalCategory,
           thumbnailUrl,
@@ -295,6 +299,7 @@ export const VideoManagementSection: React.FC<VideoManagementSectionProps> = ({
         targetVideo = {
           id: `vid-${Date.now()}`,
           title: modalTitle.trim(),
+          translations: modalTranslations,
           youtubeId: yId,
           category: finalCategory,
           thumbnailUrl,
@@ -602,6 +607,15 @@ export const VideoManagementSection: React.FC<VideoManagementSectionProps> = ({
                 />
               </div>
 
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-[#333]">영상 제목 번역</p>
+                {(['en','ja','zh','es'] as const).map(lang => <label key={lang} className="block text-xs text-[#555]">
+                  {lang.toUpperCase()}
+                  <input type="text" value={modalTranslations[lang]?.title || ''}
+                    onChange={e=>setModalTranslations({...modalTranslations,[lang]:{title:e.target.value}})}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-[#deded8]"/>
+                </label>)}
+              </div>
               {/* 유튜브 URL */}
               <div>
                 <label className="block text-xs font-bold text-[#333] mb-1">

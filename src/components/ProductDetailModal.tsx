@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { LanguageCode, Product, StoreSettings } from '../types';
 import { translations } from '../locales/translations';
+import { ui, localeFor } from '../locales/ui';
+import { productText, heroText, videoTitle, categoryText } from '../locales/content';
 import { getYoutubeEmbedUrl } from '../utils/youtube';
 
 interface ProductDetailModalProps {
@@ -43,20 +45,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   const t = translations[currentLang];
-  const trans = product.translations?.[currentLang];
-
-  const displayName = trans?.name || product.name;
-  const displayDesc = trans?.description || product.description;
-  const displayIncluded = (trans?.includedItems && trans.includedItems.length > 0)
-    ? trans.includedItems
-    : product.includedItems;
+  const {name: displayName, description: displayDesc, includedItems: displayIncluded} = productText(product, currentLang);
 
   const images = product.images && product.images.length > 0 
     ? product.images 
     : ['https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80'];
 
   const formattedPrice = new Intl.NumberFormat(
-    currentLang === 'ko' ? 'ko-KR' : currentLang === 'ja' ? 'ja-JP' : 'en-US',
+    localeFor[currentLang],
     {
       style: 'currency',
       currency: product.currency || 'KRW',
@@ -124,7 +120,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   // 구매 요청 서식 클립보드 복사
   const handleCopyDetails = async () => {
     try {
-      const fullText = `[${emailSubject}]\n\n${emailBody}\n\n받는 사람: ${recipientEmail}`;
+      const fullText = `[${emailSubject}]\n\n${emailBody}\n\n${ui[currentLang].recipient}: ${recipientEmail}`;
       await navigator.clipboard.writeText(fullText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -162,7 +158,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <button
             onClick={onClose}
             className="p-1.5 rounded-full text-[#8e8e89] hover:text-[#1a1a18] hover:bg-[#f4f4f0] transition-colors"
-            aria-label="닫기"
+            aria-label={t.products.close}
           >
             <X className="w-6 h-6" />
           </button>
@@ -176,7 +172,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="relative aspect-16/10 w-full bg-[#1a1a18] rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
               <img
                 src={images[currentImageIndex]}
-                alt={`${displayName} - 사진 ${currentImageIndex + 1}`}
+                alt={`${displayName} - ${ui[currentLang].photo} ${currentImageIndex + 1}`}
                 className="w-full h-full object-contain"
               />
 
@@ -184,16 +180,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {images.length > 1 && (
                 <>
                   <button
+                    aria-label={ui[currentLang].previous}
                     onClick={handlePrevImage}
                     className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all cursor-pointer backdrop-blur-xs"
-                    aria-label="이전 사진"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
+                    aria-label={ui[currentLang].next}
                     onClick={handleNextImage}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all cursor-pointer backdrop-blur-xs"
-                    aria-label="다음 사진"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -238,7 +234,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* 상세 설명 */}
           <div className="space-y-3">
             <h4 className="text-base font-bold text-[#1a1a18] flex items-center gap-2">
-              <span>상세 정보</span>
+              <span>{ui[currentLang].details}</span>
             </h4>
             <div className="text-sm sm:text-base text-[#444440] leading-relaxed whitespace-pre-line bg-[#fcfcfb] p-5 rounded-xl border border-[#ebebe6]">
               {displayDesc}
@@ -275,8 +271,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {youtubeEmbedUrl ? (
               <div className="relative aspect-16/9 w-full rounded-xl overflow-hidden bg-black shadow-md border border-[#ebebe6]">
                 <iframe
-                  src={youtubeEmbedUrl}
-                  title="Robot Run Demonstration"
+                  src={`${youtubeEmbedUrl}&hl=${currentLang}`}
+                  title={t.products.drivingVideo}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -297,7 +293,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <p className="text-xs text-[#73736c] mb-0.5">{t.emailTemplate.instruction}</p>
             <p className="text-xs font-mono text-[#8e8e89] flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-[#D85A30]" />
-              <span>수신: {recipientEmail}</span>
+              <span>{ui[currentLang].recipient}: {recipientEmail}</span>
             </p>
           </div>
 

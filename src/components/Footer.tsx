@@ -5,9 +5,11 @@
  */
 
 import React from 'react';
-import { Youtube, ShieldCheck, Mail, ArrowUp } from 'lucide-react';
+import { Youtube, Mail, ArrowUp } from 'lucide-react';
 import { LanguageCode, StoreSettings } from '../types';
 import { translations } from '../locales/translations';
+import { ui, localeFor } from '../locales/ui';
+import { productText, heroText, videoTitle, categoryText } from '../locales/content';
 
 interface FooterProps {
   currentLang: LanguageCode;
@@ -43,13 +45,13 @@ export const Footer: React.FC<FooterProps> = ({
               className="inline-block cursor-pointer"
             >
               {customLogoUrl ? (
-                <img src={customLogoUrl} alt="Store Logo" className="h-9 md:h-10 w-auto object-contain" />
+                <img src={customLogoUrl} alt={ui[currentLang].logo} className="h-9 md:h-10 w-auto object-contain" />
               ) : (
-                <img src="/logo.svg" alt="Store Logo" className="h-9 md:h-10 w-auto object-contain" />
+                <img src="/logo.svg" alt={ui[currentLang].logo} className="h-9 md:h-10 w-auto object-contain" />
               )}
             </div>
             <p className="text-sm text-[#a3a39e] max-w-sm leading-relaxed">
-              WRO(World Robot Olympiad) 로봇 조립도 및 소스코드, CoSpace Rescue 자율주행 알고리즘을 연구하고 공유하는 1인 전문 엔지니어링 스토어입니다.
+              {ui[currentLang].about}
             </p>
             <div className="pt-2">
               <a
@@ -59,14 +61,14 @@ export const Footer: React.FC<FooterProps> = ({
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-[#cc0000] text-white hover:bg-[#b00000] transition-colors"
               >
                 <Youtube className="w-4 h-4" />
-                <span>YouTube 구독하기</span>
+                <span>{t.nav.subscribe}</span>
               </a>
             </div>
           </div>
 
           {/* 2열: 바로가기 메뉴 */}
           <div className="space-y-3">
-            <p className="text-xs font-bold text-white uppercase tracking-wider">탐색 (Navigation)</p>
+            <p className="text-xs font-bold text-white uppercase tracking-wider">{ui[currentLang].navigation}</p>
             <ul className="space-y-2 text-sm text-[#a3a39e]">
               <li>
                 <button 
@@ -105,21 +107,13 @@ export const Footer: React.FC<FooterProps> = ({
 
           {/* 3열: 고객 안내 & 관리자 */}
           <div className="space-y-3">
-            <p className="text-xs font-bold text-white uppercase tracking-wider">고객 및 운영 (Support)</p>
+            <p className="text-xs font-bold text-white uppercase tracking-wider">{ui[currentLang].support}</p>
             <ul className="space-y-2 text-sm text-[#a3a39e]">
               <li className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-[#D85A30]" />
                 <span className="font-mono text-xs">{settings.adminEmail}</span>
               </li>
-              <li>
-                <button 
-                  onClick={() => onNavigate('admin')}
-                  className="flex items-center gap-1.5 text-xs text-[#70706a] hover:text-[#D85A30] transition-colors pt-2 cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>관리자 로그인 (/admin)</span>
-                </button>
-              </li>
+
             </ul>
           </div>
 
@@ -127,12 +121,12 @@ export const Footer: React.FC<FooterProps> = ({
 
         {/* 하단 카피라이트 & 맨 위로 가기 버튼 */}
         <div className="pt-8 border-t border-[#2d2d2a] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#70706a]">
-          <p>© {new Date().getFullYear()} ROBO STORE. All rights reserved. Built with precision for competitive robotics.</p>
+          <p>© {new Date().getFullYear()} ROBO STORE. {ui[currentLang].copyright}</p>
           <button
             onClick={scrollToTop}
             className="flex items-center gap-1.5 text-[#a3a39e] hover:text-white transition-colors"
           >
-            <span>TOP 맨 위로</span>
+            <span>{ui[currentLang].top}</span>
             <ArrowUp className="w-3.5 h-3.5" />
           </button>
         </div>

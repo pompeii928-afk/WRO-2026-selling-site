@@ -8,6 +8,8 @@ import React from 'react';
 import { ArrowDown, Cpu, FileText, PlayCircle } from 'lucide-react';
 import { LanguageCode, StoreSettings } from '../types';
 import { translations } from '../locales/translations';
+import { ui, localeFor } from '../locales/ui';
+import { productText, heroText, videoTitle, categoryText } from '../locales/content';
 
 interface HeroProps {
   currentLang: LanguageCode;
@@ -19,9 +21,7 @@ export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClic
   const t = translations[currentLang];
 
   // 커스텀 설정이 있으면 우선 사용하고 없으면 다국어 기본값 적용
-  const title = (settings.translations?.[currentLang]?.heroTitle || settings.heroTitle || t.hero.title);
-  const subtitle = (settings.translations?.[currentLang]?.heroSubtitle || settings.heroSubtitle || t.hero.subtitle);
-  const buttonText = (settings.translations?.[currentLang]?.heroButtonText || settings.heroButtonText || t.hero.ctaButton);
+  const {title, subtitle, buttonText} = heroText(settings, currentLang);
 
   return (
     <section className="relative bg-white pt-16 pb-20 md:pt-24 md:pb-28 border-b border-[#ecece8] overflow-hidden">
@@ -58,7 +58,7 @@ export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClic
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-[#70706a] font-medium">STEP 1</p>
+              <p className="text-xs text-[#70706a] font-medium">{ui[currentLang].step} 1</p>
               <p className="text-sm font-bold text-[#1a1a18]">{t.hero.feature1}</p>
             </div>
           </div>
@@ -68,7 +68,7 @@ export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClic
               <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-[#70706a] font-medium">STEP 2</p>
+              <p className="text-xs text-[#70706a] font-medium">{ui[currentLang].step} 2</p>
               <p className="text-sm font-bold text-[#1a1a18]">{t.hero.feature2}</p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export const Hero: React.FC<HeroProps> = ({ currentLang, settings, onExploreClic
               <PlayCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-[#70706a] font-medium">STEP 3</p>
+              <p className="text-xs text-[#70706a] font-medium">{ui[currentLang].step} 3</p>
               <p className="text-sm font-bold text-[#1a1a18]">{t.hero.feature3}</p>
             </div>
           </div>

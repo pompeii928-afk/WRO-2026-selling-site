@@ -9,7 +9,7 @@
  * - 브라우저 언어 자동 감지 및 5개 국어 전환 (ko, en, ja, zh, es)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Youtube } from 'lucide-react';
 import { LanguageCode, Product, StoreSettings, ProductCategory, VideoItem } from './types';
 import { translations } from './locales/translations';
@@ -22,7 +22,8 @@ import {
   fetchCloudSettings,
   fetchCloudVideos 
 } from './utils/storage';
-import { Header } from './components/Header';
+import { ui } from './locales/ui';
+import { Header, ActiveSection } from './components/Header';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -33,7 +34,7 @@ import { AdminPage } from './components/AdminPage';
 
 // 브라우저 기본 언어 감지 헬퍼
 function detectInitialLanguage(): LanguageCode {
-  if (typeof window === 'undefined') return 'ko';
+  if (typeof window === 'undefined') return 'en';
   
   // 1. 기존 저장된 사용자 선택 언어 확인
   const saved = localStorage.getItem('ROBO_STORE_LANGUAGE') as LanguageCode;
@@ -41,17 +42,13 @@ function detectInitialLanguage(): LanguageCode {
     return saved;
   }
 
-  // 2. 브라우저 언어 감지
-  const browserLang = (navigator.language || '').toLowerCase();
-  if (browserLang.startsWith('ko')) return 'ko';
-  if (browserLang.startsWith('ja')) return 'ja';
-  if (browserLang.startsWith('zh')) return 'zh';
-  if (browserLang.startsWith('es')) return 'es';
-  return 'en'; // 기본 영문 (글로벌 사용자)
+  return 'en'; // English is the default; explicit visitor choices are retained.
 }
 
 export default function App() {
   // 언어 상태
+  const [activeSection, setActiveSection] = useState<ActiveSection>('home');
+  const navigationTarget = useRef<{section: string; until: number} | null>(null);
   const [currentLang, setCurrentLang] = useState<LanguageCode>(detectInitialLanguage);
 
   // 현재 페이지 라우트 상태 ('home' | 'videos' | 'admin')
@@ -119,12 +116,14 @@ export default function App() {
 
     // 브라우저 뒤로가기/앞으로가기 popstate 이벤트 감지
     const handlePopState = () => {
+      navigationTarget.current = null;
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
       if (path === '/admin' || path.startsWith('/admin') || hash === '#/admin' || hash === '#admin') {
         setCurrentPage('admin');
       } else {
         setCurrentPage('home');
+        setActiveSection('home');
       }
     };
 
@@ -135,6 +134,44 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = currentLang;
+    for (const selector of ['meta[name="description"]', 'meta[property="og:description"]']) {
+      document.querySelector(selector)?.setAttribute('content', ui[currentLang].pageDescription);
+    }
+  }, [currentLang]);
+
+  // Keep the navigation indicator aligned with the visible section.
+  useEffect(() => {
+    if (currentPage !== 'home') return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const pending = navigationTarget.current;
+      if (pending) {
+        const target = document.getElementById(pending.section);
+        const arrived = pending.section === 'home' ? window.scrollY <= 2 : target && Math.abs(target.getBoundingClientRect().top - (pending.section === 'products-section' ? 80 : 0)) <= 3;
+        if (!arrived && Date.now() < pending.until) return;
+        navigationTarget.current = null;
+      }
+      const contact = document.getElementById('contact-section');
+      const videos = document.getElementById('videos-section');
+      const products = document.getElementById('products-section');
+      if (contact && contact.getBoundingClientRect().top <= 140) setActiveSection('contact');
+      else if (videos && videos.getBoundingClientRect().top <= 140) setActiveSection('videos');
+      else if (products && products.getBoundingClientRect().top <= 140 && window.scrollY > 10) setActiveSection('products');
+      else if (window.scrollY <= 10) setActiveSection('home');
+    };
+    const scroll = () => { if (!frame) frame = requestAnimationFrame(update); };
+    const manualScroll = () => { navigationTarget.current = null; };
+    const manualKeyScroll = (event: KeyboardEvent) => { if (['PageUp','PageDown','Home','End','ArrowUp','ArrowDown',' '].includes(event.key)) manualScroll(); };
+    window.addEventListener('scroll', scroll, { passive: true });
+    window.addEventListener('wheel', manualScroll, { passive: true });
+    window.addEventListener('touchstart', manualScroll, { passive: true });
+    window.addEventListener('keydown', manualKeyScroll);
+    return () => { window.removeEventListener('scroll', scroll); window.removeEventListener('wheel', manualScroll); window.removeEventListener('touchstart', manualScroll); window.removeEventListener('keydown', manualKeyScroll); cancelAnimationFrame(frame); };
+  }, [currentPage]);
+
   // 언어 변경 핸들러
   const handleLanguageChange = (newLang: LanguageCode) => {
     setCurrentLang(newLang);
@@ -143,7 +180,9 @@ export default function App() {
 
   // 페이지 이동 핸들러
   const handleNavigate = (page: 'home' | 'videos' | 'admin', sectionId?: string) => {
+    navigationTarget.current = page === 'home' ? {section: sectionId || 'home', until: Date.now() + 2000} : null;
     setCurrentPage(page);
+    setActiveSection(page === 'videos' ? 'videos' : sectionId === 'products-section' ? 'products' : sectionId === 'contact-section' ? 'contact' : 'home');
     
     // URL 히스토리 업데이트
     if (typeof window !== 'undefined') {
@@ -216,7 +255,7 @@ export default function App() {
       <Header
         currentLang={currentLang}
         onLanguageChange={handleLanguageChange}
-        currentPage={currentPage}
+        activeSection={activeSection}
         onNavigate={handleNavigate}
         youtubeChannelUrl={settings.youtubeChannelUrl}
         customLogoUrl={settings.customLogoUrl}
@@ -255,6 +294,7 @@ export default function App() {
                 {/* 카테고리 분류 필터: 전체 + 등록된 모든 카테고리 */}
                 <div className="flex flex-wrap items-center gap-1.5 bg-[#f4f4f0] p-1.5 rounded-xl self-start md:self-auto">
                   <button
+                    aria-pressed={selectedCategory === 'ALL'}
                     onClick={() => setSelectedCategory('ALL')}
                     className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       selectedCategory === 'ALL'
@@ -273,6 +313,7 @@ export default function App() {
                     return (
                       <button
                         key={cat}
+                        aria-pressed={isSelected}
                         onClick={() => setSelectedCategory(cat)}
                         className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                           isSelected
@@ -309,7 +350,7 @@ export default function App() {
               ) : (
                 <div className="py-20 text-center bg-[#fbfbfa] rounded-2xl border border-dashed border-[#deded8]">
                   <p className="text-base text-[#8e8e89] font-medium">
-                    해당 카테고리에 등록된 제품이 없습니다.
+                    {ui[currentLang].emptyProducts}
                   </p>
                 </div>
               )}
